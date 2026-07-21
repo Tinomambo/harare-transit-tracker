@@ -1,4 +1,5 @@
-const http = require('http');
+// 1. Change 'http' to 'https' for Render deployment
+const https = require('https');
 
 // Simulating three kombis in Harare CBD:
 // 1. Registered Kombi driving on roads
@@ -18,9 +19,9 @@ function sendLocationUpdate(vehicle) {
     speed: vehicle.speed
   });
 
+  // 2. Point options to your live Render backend URL
   const options = {
-    hostname: 'localhost',
-    port: 5000,
+    hostname: 'harare-transit-tracker.onrender.com',
     path: '/api/v1/tracking/update',
     method: 'POST',
     headers: {
@@ -29,7 +30,8 @@ function sendLocationUpdate(vehicle) {
     }
   };
 
-  const req = http.request(options, (res) => {
+  // 3. Use https.request instead of http.request
+  const req = https.request(options, (res) => {
     res.on('data', () => {});
   });
 
