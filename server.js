@@ -119,7 +119,7 @@ app.post('/api/v1/tracking/update', async (req, res) => {
 
     return res.status(200).json({ status: 'Success', processed: payload });
   } catch (err) {
-    console.error('Error processing location update:', err.message);
+    console.error('Error processing location update:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
