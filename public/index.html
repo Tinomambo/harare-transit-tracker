@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harare Smart Transit Monitoring System</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #1a252f;
+      color: white;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 60px;
+      box-sizing: border-box;
+    }
+
+    header h1 {
+      font-size: 1.2rem;
+      margin: 0;
+    }
+
+    .badge {
+      background: #27ae60;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+
+    #main-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 60px);
+      width: 100vw;
+    }
+
+    #map {
+      flex: 3;
+      height: 100%;
+      width: 100%;
+      background-color: #e5e3df; /* Map placeholder background */
+    }
+
+    #sidebar {
+      flex: 1;
+      min-width: 320px;
+      max-width: 400px;
+      background: #f8f9fa;
+      border-left: 2px solid #ddd;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      color: #2c3e50;
+    }
+
+    .stat {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #2980b9;
+    }
+
+    .log-item {
+      font-size: 0.85rem;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .violation { color: #c0392b; font-weight: bold; }
+    .authorized { color: #27ae60; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Smart Public Transport Tracking System — City of Harare CBD</h1>
+    <span class="badge" id="conn-status">Connecting...</span>
+  </header>
+
+  <div id="main-container">
+    <div id="map"></div>
+    <div id="sidebar">
+      <div class="card">
+        <h3>Active System Stats</h3>
+        <p>Live Tracked Vehicles: <span class="stat" id="vehicle-count">0</span></p>
+      </div>
+
+      <div class="card">
+        <h3>Live Event Feed</h3>
+        <div id="logs-container">
+          <p class="log-item" style="color: #7f8c8d;">Waiting for incoming GPS updates...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS & Socket.io Client -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // 1. Initialize Map centered on Harare CBD (-17.8252, 31.0335)
+      const map = L.map('map').setView([-17.8252, 31.0335], 14);
+
+      // Force Leaflet to recalculate container size
+      setTimeout(() => { map.invalidateSize(); }, 300);
+
+      // 2. Load free OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // 3. Mark Authorized Holding Bays on the Map with Green Circles
+      const holdingBays = [
+        { name: "Copacabana Bus Terminus", lat: -17.8317, lng: 31.0428 },
+        { name: "Market Square Rank", lat: -17.8358, lng: 31.0375 },
+        { name: "Fourth Street Rank", lat: -17.8308, lng: 31.0542 }
+      ];
+
+      holdingBays.forEach(bay => {
+        L.circle([bay.lat, bay.lng], {
+          color: '#27ae60',
+          fillColor: '#2ecc71',
+          fillOpacity: 0.35,
+          radius: 120
+        }).addTo(map).bindPopup(`<b>${bay.name}</b><br>Authorized Holding Zone`);
+      });
+
+      // Store active markers by registration number
+      const vehicleMarkers = {};
+      const socket = io();
+
+      // Socket status indicator
+      socket.on('connect', () => {
+        const badge = document.getElementById('conn-status');
+        badge.innerText = 'Server Online';
+        badge.style.background = '#27ae60';
+      });
+
+      socket.on('disconnect', () => {
+        const badge = document.getElementById('conn-status');
+        badge.innerText = 'Server Offline';
+        badge.style.background = '#e74c3c';
+      });
+
+      // 4. Handle Real-Time Position Updates
+      socket.on('vehiclePositionUpdate', (data) => {
+        const { registration_number, latitude, longitude, isUnregistered, isInAuthorizedBay, speed } = data;
+
+        let statusText = 'En Route';
+
+        if (isUnregistered) {
+          statusText = '⚠️ UNREGISTERED / ILLEGAL OPERATOR';
+        } else if (!isInAuthorizedBay && speed < 5) {
+          statusText = '⚠️ Informal Stop Detected';
+        } else if (isInAuthorizedBay) {
+          statusText = 'In Authorized Rank';
+        }
+
+        // Update or create marker on map
+        if (vehicleMarkers[registration_number]) {
+          vehicleMarkers[registration_number].setLatLng([latitude, longitude]);
+        } else {
+          vehicleMarkers[registration_number] = L.marker([latitude, longitude]).addTo(map);
+        }
+
+        vehicleMarkers[registration_number].bindPopup(`
+          <b>Vehicle: ${registration_number}</b><br>
+          Status: ${statusText}<br>
+          Speed: ${speed} km/h
+        `).openPopup();
+
+        // Update Active Vehicle Count
+        document.getElementById('vehicle-count').innerText = Object.keys(vehicleMarkers).length;
+
+        // Update Live Activity Feed
+        const logsContainer = document.getElementById('logs-container');
+        const newLog = document.createElement('div');
+        newLog.className = 'log-item';
+        const timestamp = new Date().toLocaleTimeString();
+
+        if (isUnregistered) {
+          newLog.innerHTML = `<span class="violation">[${timestamp}] 🚨 ILLEGAL: Vehicle ${registration_number} operating without registration!</span>`;
+        } else if (!isInAuthorizedBay && speed < 5) {
+          newLog.innerHTML = `<span class="violation">[${timestamp}] ⚠️ VIOLATION: Vehicle ${registration_number} stopped outside designated rank!</span>`;
+        } else {
+          newLog.innerHTML = `<span class="authorized">[${timestamp}] 🟢 NORMAL: Vehicle ${registration_number} moved. Speed: ${speed}km/h</span>`;
+        }
+
+        logsContainer.prepend(newLog);
+      });
+    });
+  </script>
+</body>
+</html>
