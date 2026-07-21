@@ -1,16 +1,15 @@
 {
   "name": "harare-transit-tracker",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Smart Public Transit Tracking System for Harare",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "nodemon": "^3.1.14"
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "ws": "^8.16.0",
+    "dotenv": "^16.4.5"
   }
 }
