@@ -200,6 +200,19 @@
     socket.on('location_update', (data) => {
       updateVehicle(data);
     });
+    // Add this inside the <script> block of public/commuter.html
+
+socket.on('vehicle_offline', (data) => {
+  const reg = data.registration_number;
+  
+  if (vehicleMarkers[reg]) {
+    map.removeLayer(vehicleMarkers[reg]); // Remove marker from map
+    delete vehicleMarkers[reg];
+    delete vehiclesData[reg];
+    
+    renderVehicleList(); // Refresh commuter list & badge count
+  }
+});
   </script>
 </body>
 </html>
