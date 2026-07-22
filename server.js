@@ -134,6 +134,40 @@ app.post('/api/v1/tracking/offline', (req, res) => {
 // =========================================================================
 
 const PORT = process.env.PORT || 10000;
+// =========================================================================
+// ENFORCEMENT & COMPLIANCE ENDPOINTS
+// =========================================================================
+
+// GET Vehicle Compliance Status
+app.get('/api/v1/enforcement/lookup/:plate', async (req, res) => {
+  try {
+    const plate = req.params.plate.trim().toUpperCase();
+    
+    // Search database for vehicle
+    const query = 'SELECT * FROM vehicles WHERE UPPER(registration_number) = $1';
+    const result = await pool.query(query, [plate]);
+
+    if (result.rows.length > 0) {
+      const vehicle = result.rows[0];
+      return res.status(200).json({
+        status: 'REGISTERED',
+        registration_number: vehicle.registration_number,
+        last_seen: vehicle.updated_at,
+        current_speed: vehicle.speed,
+        capacity: vehicle.capacity || 18
+      });
+    } else {
+      return res.status(200).json({
+        status: 'UNREGISTERED',
+        registration_number: plate,
+        message: 'Vehicle not found in municipal transit registry.'
+      });
+    }
+  } catch (error) {
+    console.error('Enforcement lookup error:', error);
+    res.status(500).json({ error: 'Internal server error during enforcement query' });
+  }
+});
 server.listen(PORT, () => {
   console.log(`🚀 Server listening on port ${PORT}`);
 });
