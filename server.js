@@ -20,7 +20,7 @@ const pool = new Pool({
     rejectUnauthorized:false
   }
 });
-
+module.exports = pool;
 app.use(express.json());
 app.use(cors());
 app.use(helmet({ contentSecurityPolicy: false }));
