@@ -206,6 +206,23 @@ HARARE_RANKS.forEach(rank => {
       document.getElementById('server-status').innerText = 'Disconnected';
       document.getElementById('server-status').className = 'bg-rose-600/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded-md text-sm font-semibold';
     });
+    // Add this inside the <script> block of public/index.html
+
+socket.on('vehicle_offline', (data) => {
+  const reg = data.registration_number;
+  
+  if (vehicleMarkers[reg]) {
+    map.removeLayer(vehicleMarkers[reg]); // Remove marker from map
+    delete vehicleMarkers[reg];
+    delete vehiclesData[reg];
+    
+    // Log disconnect to event feed
+    logEvent(`Vehicle disconnected/offline: ${reg}`);
+    
+    // Update live count badge
+    updateVehicleCount();
+  }
+});
 
     // Listen for live location updates from simulator
     socket.on('location_update', (data) => {
