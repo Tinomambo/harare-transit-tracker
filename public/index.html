@@ -1,227 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Harare Smart Transit Monitoring System</title>
-  
-  <!-- Leaflet CSS -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Public Transport Tracking System — City of Harare CBD</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    body {
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      background: #1a252f;
-      color: white;
-      padding: 15px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      height: 60px;
-      box-sizing: border-box;
-    }
-
-    header h1 {
-      font-size: 1.2rem;
-      margin: 0;
-    }
-
-    .badge {
-      background: #27ae60;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 0.85rem;
-      font-weight: bold;
-    }
-
-    #main-container {
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 60px);
-      width: 100vw;
-    }
-
-    #map {
-      flex: 3;
-      height: 100%;
-      width: 100%;
-      background-color: #e5e3df; /* Map placeholder background */
-    }
-
-    #sidebar {
-      flex: 1;
-      min-width: 320px;
-      max-width: 400px;
-      background: #f8f9fa;
-      border-left: 2px solid #ddd;
-      padding: 20px;
-      box-sizing: border-box;
-      overflow-y: auto;
-    }
-
-    .card {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      margin-bottom: 15px;
-    }
-
-    .card h3 {
-      margin-top: 0;
-      margin-bottom: 10px;
-      font-size: 1rem;
-      color: #2c3e50;
-    }
-
-    .stat {
-      font-size: 1.8rem;
-      font-weight: bold;
-      color: #2980b9;
-    }
-
-    .log-item {
-      font-size: 0.85rem;
-      padding: 8px 0;
-      border-bottom: 1px solid #eee;
-    }
-
-    .violation { color: #c0392b; font-weight: bold; }
-    .authorized { color: #27ae60; }
-  </style>
-</head>
-<body>
-
-  <header>
-    <h1>Smart Public Transport Tracking System — City of Harare CBD</h1>
-    <span class="badge" id="conn-status">Connecting...</span>
-  </header>
-
-  <div id="main-container">
-    <div id="map"></div>
-    <div id="sidebar">
-      <div class="card">
-        <h3>Active System Stats</h3>
-        <p>Live Tracked Vehicles: <span class="stat" id="vehicle-count">0</span></p>
-      </div>
-
-      <div class="card">
-        <h3>Live Event Feed</h3>
-        <div id="logs-container">
-          <p class="log-item" style="color: #7f8c8d;">Waiting for incoming GPS updates...</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Leaflet JS & Socket.io Client -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Socket.IO Client -->
   <script src="/socket.io/socket.io.js"></script>
 
+  <style>
+    #map {
+      height: calc(100vh - 80px);
+      width: 100%;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans flex flex-col h-screen">
+
+  <!-- Header -->
+  <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center h-[80px]">
+    <h1 class="text-xl font-bold tracking-wide text-white">
+      Smart Public Transport Tracking System — <span class="text-emerald-400">City of Harare CBD</span>
+    </h1>
+    <div class="flex items-center space-x-2">
+      <span class="relative flex h-3 w-3">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+      </span>
+      <span id="server-status" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-sm font-semibold">
+        Server Online
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- Map Container -->
+    <div class="flex-1 relative">
+      <div id="map"></div>
+    </div>
+
+    <!-- Sidebar Info Panel -->
+    <aside class="w-80 bg-gray-800 border-l border-gray-700 p-6 flex flex-col justify-between space-y-6">
+      
+      <div>
+        <!-- Stats Card -->
+        <div class="bg-gray-900/60 border border-gray-700 rounded-xl p-5 mb-6">
+          <h2 class="text-xs uppercase font-bold text-gray-400 tracking-wider mb-2">Active System Stats</h2>
+          <div class="flex items-baseline justify-between">
+            <span class="text-sm text-gray-300">Live Tracked Vehicles:</span>
+            <span id="live-vehicle-count" class="text-3xl font-extrabold text-emerald-400">0</span>
+          </div>
+        </div>
+
+        <!-- Live Event Feed -->
+        <div class="bg-gray-900/60 border border-gray-700 rounded-xl p-5 flex flex-col h-[320px]">
+          <h2 class="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3">Live Event Feed</h2>
+          <div id="event-feed" class="flex-1 overflow-y-auto space-y-2 text-xs font-mono text-gray-400 pr-1">
+            <div class="text-gray-500 italic">Waiting for incoming GPS updates...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="text-xs text-gray-500 text-center">
+        Harare Transit Tracker &copy; 2026
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Client Application Script -->
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      // 1. Initialize Map centered on Harare CBD (-17.8252, 31.0335)
-      const map = L.map('map').setView([-17.8252, 31.0335], 14);
+    // 1. Initialize Leaflet Map centered on Harare CBD
+    const HARARE_CBD = [-17.8292, 31.0522];
+    const map = L.map('map').setView(HARARE_CBD, 14);
 
-      // Force Leaflet to recalculate container size
-      setTimeout(() => { map.invalidateSize(); }, 300);
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-      // 2. Load free OpenStreetMap tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(map);
+    // Dictionary to hold Leaflet markers key-valued by registration_number
+    const vehicleMarkers = {};
 
-      // 3. Mark Authorized Holding Bays on the Map with Green Circles
-      const holdingBays = [
-        { name: "Copacabana Bus Terminus", lat: -17.8317, lng: 31.0428 },
-        { name: "Market Square Rank", lat: -17.8358, lng: 31.0375 },
-        { name: "Fourth Street Rank", lat: -17.8308, lng: 31.0542 }
-      ];
-
-      holdingBays.forEach(bay => {
-        L.circle([bay.lat, bay.lng], {
-          color: '#27ae60',
-          fillColor: '#2ecc71',
-          fillOpacity: 0.35,
-          radius: 120
-        }).addTo(map).bindPopup(`<b>${bay.name}</b><br>Authorized Holding Zone`);
+    // 2. Custom Kombi Icon Marker
+    function createKombiIcon() {
+      return L.divIcon({
+        className: 'custom-kombi-icon',
+        html: `
+          <div style="background-color: #10B981; border: 2px solid #FFFFFF; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);">
+            <div style="background-color: white; width: 8px; height: 8px; border-radius: 50%;"></div>
+          </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
       });
+    }
 
-      // Store active markers by registration number
-      const vehicleMarkers = {};
-      const socket = io();
+    // Helper: Log event to Feed
+    function addFeedLog(message) {
+      const feed = document.getElementById('event-feed');
+      // Clear initial placeholder text
+      if (feed.querySelector('.italic')) {
+        feed.innerHTML = '';
+      }
+      
+      const timeStr = new Date().toLocaleTimeString();
+      const logItem = document.createElement('div');
+      logItem.className = 'bg-gray-800/80 p-2 rounded border border-gray-700/50 text-gray-300';
+      logItem.innerHTML = `<span class="text-emerald-400 font-bold">[${timeStr}]</span> ${message}`;
+      
+      feed.prepend(logItem);
+      
+      // Limit feed to last 20 messages
+      if (feed.children.length > 20) {
+        feed.removeChild(feed.lastChild);
+      }
+    }
 
-      // Socket status indicator
-      socket.on('connect', () => {
-        const badge = document.getElementById('conn-status');
-        badge.innerText = 'Server Online';
-        badge.style.background = '#27ae60';
-      });
+    // Helper: Update Marker Location & Stats
+    function updateVehicleOnMap(data) {
+      const { registration_number, latitude, longitude, speed } = data;
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
 
-      socket.on('disconnect', () => {
-        const badge = document.getElementById('conn-status');
-        badge.innerText = 'Server Offline';
-        badge.style.background = '#e74c3c';
-      });
+      if (isNaN(lat) || isNaN(lng)) return;
 
-      // 4. Handle Real-Time Position Updates
-      socket.on('vehiclePositionUpdate', (data) => {
-        const { registration_number, latitude, longitude, isUnregistered, isInAuthorizedBay, speed } = data;
+      const popupContent = `
+        <div style="color: #111827; font-sans">
+          <strong style="font-size: 14px;">🚍 Kombi: ${registration_number}</strong><br>
+          <span style="font-size: 12px; color: #4B5563;">Speed: ${speed || 0} km/h</span>
+        </div>
+      `;
 
-        let statusText = 'En Route';
+      if (vehicleMarkers[registration_number]) {
+        // Move existing marker smoothly
+        vehicleMarkers[registration_number].setLatLng([lat, lng]);
+        vehicleMarkers[registration_number].getPopup().setContent(popupContent);
+      } else {
+        // Create new marker
+        vehicleMarkers[registration_number] = L.marker([lat, lng], { icon: createKombiIcon() })
+          .addTo(map)
+          .bindPopup(popupContent);
+          
+        addFeedLog(`New vehicle connected: <span class="text-white font-semibold">${registration_number}</span>`);
+      }
 
-        if (isUnregistered) {
-          statusText = '⚠️ UNREGISTERED / ILLEGAL OPERATOR';
-        } else if (!isInAuthorizedBay && speed < 5) {
-          statusText = '⚠️ Informal Stop Detected';
-        } else if (isInAuthorizedBay) {
-          statusText = 'In Authorized Rank';
+      // Update vehicle counter UI
+      const countElement = document.getElementById('live-vehicle-count');
+      if (countElement) {
+        countElement.innerText = Object.keys(vehicleMarkers).length;
+      }
+    }
+
+    // 3. Initial Fetch on Page Load
+    async function fetchActiveVehicles() {
+      try {
+        const response = await fetch('/api/v1/vehicles');
+        if (response.ok) {
+          const vehicles = await response.json();
+          vehicles.forEach(vehicle => updateVehicleOnMap(vehicle));
         }
+      } catch (err) {
+        console.warn('Initial vehicle fetch error:', err);
+      }
+    }
 
-        // Update or create marker on map
-        if (vehicleMarkers[registration_number]) {
-          vehicleMarkers[registration_number].setLatLng([latitude, longitude]);
-        } else {
-          vehicleMarkers[registration_number] = L.marker([latitude, longitude]).addTo(map);
-        }
+    // Run fetch on load
+    fetchActiveVehicles();
 
-        vehicleMarkers[registration_number].bindPopup(`
-          <b>Vehicle: ${registration_number}</b><br>
-          Status: ${statusText}<br>
-          Speed: ${speed} km/h
-        `).openPopup();
+    // 4. Initialize Socket.IO connection
+    const socket = io();
 
-        // Update Active Vehicle Count
-        document.getElementById('vehicle-count').innerText = Object.keys(vehicleMarkers).length;
+    socket.on('connect', () => {
+      console.log('Connected to real-time tracker socket server.');
+      document.getElementById('server-status').innerText = 'Server Online';
+    });
 
-        // Update Live Activity Feed
-        const logsContainer = document.getElementById('logs-container');
-        const newLog = document.createElement('div');
-        newLog.className = 'log-item';
-        const timestamp = new Date().toLocaleTimeString();
+    socket.on('disconnect', () => {
+      document.getElementById('server-status').innerText = 'Disconnected';
+      document.getElementById('server-status').className = 'bg-rose-600/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded-md text-sm font-semibold';
+    });
 
-        if (isUnregistered) {
-          newLog.innerHTML = `<span class="violation">[${timestamp}] 🚨 ILLEGAL: Vehicle ${registration_number} operating without registration!</span>`;
-        } else if (!isInAuthorizedBay && speed < 5) {
-          newLog.innerHTML = `<span class="violation">[${timestamp}] ⚠️ VIOLATION: Vehicle ${registration_number} stopped outside designated rank!</span>`;
-        } else {
-          newLog.innerHTML = `<span class="authorized">[${timestamp}] 🟢 NORMAL: Vehicle ${registration_number} moved. Speed: ${speed}km/h</span>`;
-        }
-
-        logsContainer.prepend(newLog);
-      });
+    // Listen for live location updates from simulator
+    socket.on('location_update', (data) => {
+      console.log('Live location update:', data);
+      updateVehicleOnMap(data);
+      addFeedLog(`Update from <span class="text-white font-semibold">${data.registration_number}</span> (${data.speed || 0} km/h)`);
     });
   </script>
 </body>
