@@ -83,6 +83,21 @@
     // 1. Initialize Leaflet Map centered on Harare CBD
     const HARARE_CBD = [-17.8292, 31.0522];
     const map = L.map('map').setView(HARARE_CBD, 14);
+    // Add Harare Rank Geofence Visuals to Admin Map
+const HARARE_RANKS = [
+  { name: 'Copacabana Rank', lat: -17.8315, lng: 31.0425, radius: 150 },
+  { name: 'Fourth Street Rank', lat: -17.8319, lng: 31.0558, radius: 150 },
+  { name: 'Market Square Rank', lat: -17.8358, lng: 31.0381, radius: 150 }
+];
+
+HARARE_RANKS.forEach(rank => {
+  L.circle([rank.lat, rank.lng], {
+    color: '#3B82F6',
+    fillColor: '#3B82F6',
+    fillOpacity: 0.2,
+    radius: rank.radius
+  }).addTo(map).bindPopup(`<b>${rank.name}</b> (Terminal Zone)`);
+});
 
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
