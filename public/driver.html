@@ -47,88 +47,111 @@
       Start Tracking Route
     </button>
   </div>
+<script>
+  let watchId = null;
+  let isTracking = false;
+  let wakeLock = null;
 
-  <script>
-    let watchId = null;
-    let isTracking = false;
-    const API_URL = 'https://harare-transit-tracker.onrender.com/api/v1/tracking/update';
-    const API_KEY = 'harare_kombi_secret_2026';
+  const API_URL = 'https://harare-transit-tracker.onrender.com/api/v1/tracking/update';
+  const API_KEY = 'harare_kombi_secret_2026';
 
-    function toggleTracking() {
-      const regInput = document.getElementById('reg-number').value.trim();
-      if (!regInput) {
-        alert('Please enter a vehicle registration number!');
-        return;
+  // Request Screen Wake Lock to prevent phone screen from sleeping
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        console.log('💡 Screen Wake Lock active.');
       }
+    } catch (err) {
+      console.warn(`Wake Lock Error: ${err.message}`);
+    }
+  }
 
-      const btn = document.getElementById('toggle-btn');
-      const statusText = document.getElementById('status-text');
+  // Release Screen Wake Lock
+  function releaseWakeLock() {
+    if (wakeLock !== null) {
+      wakeLock.release().then(() => {
+        wakeLock = null;
+        console.log('💡 Screen Wake Lock released.');
+      });
+    }
+  }
 
-      if (!isTracking) {
-        if ("geolocation" in navigator) {
-          // Start watching GPS position in real-time
-          watchId = navigator.geolocation.watchPosition(
-            sendGpsUpdate,
-            handleGpsError,
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-          );
+  // Toggle Tracking Handler
+  async function toggleTracking() {
+    const regInput = document.getElementById('reg-number').value.trim();
+    if (!regInput) {
+      alert('Please enter a vehicle registration number!');
+      return;
+    }
 
-          isTracking = true;
-          btn.innerText = 'Stop Tracking';
-          btn.className = 'w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 rounded-xl text-lg transition duration-200 shadow-lg';
-          statusText.innerText = 'Transmitting GPS...';
-          statusText.className = 'text-emerald-400 font-bold animate-pulse';
-        } else {
-          alert('Geolocation is not supported on this browser/device.');
-        }
+    const btn = document.getElementById('toggle-btn');
+    const statusText = document.getElementById('status-text');
+
+    if (!isTracking) {
+      if ("geolocation" in navigator) {
+        await requestWakeLock(); // Keep phone display and GPS active
+
+        watchId = navigator.geolocation.watchPosition(
+          sendGpsUpdate,
+          handleGpsError,
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+
+        isTracking = true;
+        btn.innerText = 'Stop Tracking';
+        btn.className = 'w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 rounded-xl text-lg transition duration-200 shadow-lg';
+        statusText.innerText = 'Transmitting GPS...';
+        statusText.className = 'text-emerald-400 font-bold animate-pulse';
       } else {
-        // Stop tracking
-        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-        isTracking = false;
-        btn.innerText = 'Start Tracking Route';
-        btn.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl text-lg transition duration-200 shadow-lg';
-        statusText.innerText = 'Offline';
-        statusText.className = 'text-amber-400 font-bold';
+        alert('Geolocation is not supported on this browser/device.');
       }
+    } else {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      releaseWakeLock(); // Allow screen to sleep normally again
+
+      isTracking = false;
+      btn.innerText = 'Start Tracking Route';
+      btn.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl text-lg transition duration-200 shadow-lg';
+      statusText.innerText = 'Offline';
+      statusText.className = 'text-amber-400 font-bold';
     }
+  }
 
-    async function sendGpsUpdate(position) {
-      const regNumber = document.getElementById('reg-number').value.trim().toUpperCase();
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      // Convert m/s to km/h
-      const speed = position.coords.speed ? Math.round(position.coords.speed * 3.6) : 0;
+  // Send GPS Payload
+  async function sendGpsUpdate(position) {
+    const regNumber = document.getElementById('reg-number').value.trim().toUpperCase();
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const speed = position.coords.speed ? Math.round(position.coords.speed * 3.6) : 0;
 
-      // Update UI elements
-      document.getElementById('lat-text').innerText = lat.toFixed(6);
-      document.getElementById('lng-text').innerText = lng.toFixed(6);
-      document.getElementById('speed-text').innerText = `${speed} km/h`;
+    document.getElementById('lat-text').innerText = lat.toFixed(6);
+    document.getElementById('lng-text').innerText = lng.toFixed(6);
+    document.getElementById('speed-text').innerText = `${speed} km/h`;
 
-      try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': API_KEY
-          },
-          body: JSON.stringify({
-            registration_number: regNumber,
-            latitude: lat,
-            longitude: lng,
-            speed: speed
-          })
-        });
-
-        if (!res.ok) console.warn('GPS Post failed with status:', res.status);
-      } catch (err) {
-        console.error('Error sending GPS update:', err);
-      }
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY
+        },
+        body: JSON.stringify({
+          registration_number: regNumber,
+          latitude: lat,
+          longitude: lng,
+          speed: speed
+        })
+      });
+    } catch (err) {
+      console.error('Error sending GPS update:', err);
     }
+  }
 
-    function handleGpsError(err) {
-      console.error('GPS Location Error:', err.message);
-      alert(`Location Error: ${err.message}. Ensure location/GPS services are turned ON.`);
-    }
-  </script>
+  function handleGpsError(err) {
+    console.error('GPS Location Error:', err.message);
+    alert(`Location Error: ${err.message}. Ensure location services are ON.`);
+  }
+</script>
 </body>
 </html>
