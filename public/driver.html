@@ -48,7 +48,7 @@
     </button>
   </div>
 
-  <script>
+ <script>
   let watchId = null;
   let isTracking = false;
   let wakeLock = null;
@@ -56,7 +56,7 @@
   const API_URL = 'https://harare-transit-tracker.onrender.com/api/v1/tracking/update';
   const API_KEY = 'harare_kombi_secret_2026';
 
-  // Request Screen Wake Lock to prevent phone screen from sleeping
+  // Request Screen Wake Lock
   async function requestWakeLock() {
     try {
       if ('wakeLock' in navigator) {
@@ -78,6 +78,25 @@
     }
   }
 
+  // NEW: Send offline notification to server
+  async function sendOfflineStatus() {
+    const regNumber = document.getElementById('reg-number').value.trim().toUpperCase();
+    if (!regNumber) return;
+
+    try {
+      await fetch('https://harare-transit-tracker.onrender.com/api/v1/tracking/offline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY
+        },
+        body: JSON.stringify({ registration_number: regNumber })
+      });
+    } catch (err) {
+      console.error('Error sending offline status:', err);
+    }
+  }
+
   // Toggle Tracking Handler
   async function toggleTracking() {
     const regInput = document.getElementById('reg-number').value.trim();
@@ -91,7 +110,7 @@
 
     if (!isTracking) {
       if ("geolocation" in navigator) {
-        await requestWakeLock(); // Keep phone display and GPS active
+        await requestWakeLock();
 
         watchId = navigator.geolocation.watchPosition(
           sendGpsUpdate,
@@ -109,7 +128,10 @@
       }
     } else {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      releaseWakeLock(); // Allow screen to sleep normally again
+      releaseWakeLock();
+
+      // NEW: Trigger offline status when driver stops tracking
+      sendOfflineStatus();
 
       isTracking = false;
       btn.innerText = 'Start Tracking Route';
