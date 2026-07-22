@@ -13,7 +13,7 @@ const io = new Server(server, {
 });
 
 // Database pool setup using DATABASE_URL environment variable
-const {Pool} = require('pg');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl:{
