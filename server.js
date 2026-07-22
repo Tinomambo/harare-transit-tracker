@@ -12,6 +12,7 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
+// Database Connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -19,13 +20,67 @@ const pool = new Pool({
   }
 });
 
+// Middleware
 app.use(express.json());
 app.use(cors());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(morgan('dev'));
 app.use(express.static('public'));
 
-// REPLACE your existing app.post('/api/v1/tracking/update') block with this:
+// =========================================================================
+// 1. GEOFENCING & RANK CONFIGURATION
+// =========================================================================
+
+// Major Harare CBD Bus Ranks Configuration
+const HARARE_RANKS = [
+  { name: 'Copacabana Rank', lat: -17.8315, lng: 31.0425, radiusMeters: 150 },
+  { name: 'Fourth Street Rank', lat: -17.8319, lng: 31.0558, radiusMeters: 150 },
+  { name: 'Market Square Rank', lat: -17.8358, lng: 31.0381, radiusMeters: 150 }
+];
+
+// Helper: Haversine distance calculation (returns distance in meters)
+function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Earth radius in meters
+  const rad1 = lat1 * Math.PI / 180;
+  const rad2 = lat2 * Math.PI / 180;
+  const deltaLat = (lat2 - lat1) * Math.PI / 180;
+  const deltaLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+            Math.cos(rad1) * Math.cos(rad2) *
+            Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+// Helper: Checks if coordinates fall inside any rank geofence
+function checkRankGeofence(latitude, longitude) {
+  for (const rank of HARARE_RANKS) {
+    const distance = getDistanceInMeters(latitude, longitude, rank.lat, rank.lng);
+    if (distance <= rank.radiusMeters) {
+      return rank.name;
+    }
+  }
+  return null;
+}
+
+// =========================================================================
+// 2. API ROUTES
+// =========================================================================
+
+// GET route to fetch all active vehicles when maps initially load
+app.get('/api/v1/vehicles', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM vehicles ORDER BY updated_at DESC');
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error fetching vehicles:', error.message || error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// POST route for live driver updates with API key authentication & geofencing
 app.post('/api/v1/tracking/update', async (req, res) => {
   try {
     // 1. Validate API Key from headers
@@ -39,6 +94,10 @@ app.post('/api/v1/tracking/update', async (req, res) => {
     const { registration_number, latitude, longitude, speed, capacity } = req.body;
     const vehicleCapacity = capacity || 18;
 
+    // 2. Check geofence
+    const currentRank = checkRankGeofence(parseFloat(latitude), parseFloat(longitude));
+
+    // 3. Upsert into database
     const query = `
       INSERT INTO vehicles (registration_number, latitude, longitude, speed, capacity, updated_at)
       VALUES ($1, $2, $3, $4, $5, NOW())
@@ -47,15 +106,25 @@ app.post('/api/v1/tracking/update', async (req, res) => {
     `;
     await pool.query(query, [registration_number, latitude, longitude, speed, vehicleCapacity]);
 
-    // Broadcast live socket update to admin dashboard
-    io.emit('location_update', { registration_number, latitude, longitude, speed });
+    // 4. Broadcast live socket update to admin & commuter dashboards
+    io.emit('location_update', { 
+      registration_number, 
+      latitude, 
+      longitude, 
+      speed,
+      current_rank: currentRank 
+    });
 
-    res.status(200).json({ status: 'success' });
+    res.status(200).json({ status: 'success', current_rank: currentRank });
   } catch (error) {
     console.error('Error processing location update:', error.message || error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
+
+// =========================================================================
+// 3. SERVER INITIALIZATION
+// =========================================================================
 
 const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => {
