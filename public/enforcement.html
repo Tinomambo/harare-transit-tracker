@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>City of Harare — Traffic Enforcement Portal</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-slate-900 border-b border-amber-500/30 p-4 text-center sticky top-0 z-50 shadow-lg">
+    <div class="inline-block bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1">
+      👮 Municipal Field Operations
+    </div>
+    <h1 class="text-lg font-bold text-white tracking-wide">City of Harare Transit Compliance</h1>
+    <p class="text-xs text-gray-400">CBD Vehicle Verification & Illegal Operator Detection</p>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 p-4 max-w-md mx-auto w-full space-y-5">
+
+    <!-- Search Section -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl">
+      <label for="plate-input" class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+        Enter Registration Plate Number
+      </label>
+      <div class="flex gap-2">
+        <input 
+          id="plate-input" 
+          type="text" 
+          placeholder="e.g. ACZ-4413" 
+          class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-lg font-mono font-bold text-amber-400 placeholder-gray-600 uppercase focus:outline-none focus:border-amber-500 transition"
+        />
+        <button 
+          onclick="verifyVehicle()" 
+          class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-5 py-3 rounded-xl text-sm transition shadow-lg flex items-center gap-1 active:scale-95">
+          <span>Search</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Dynamic Status Card (Hidden by default) -->
+    <div id="status-card" class="hidden transition-all duration-300"></div>
+
+    <!-- Quick Test Guidance for Demonstrations -->
+    <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 text-xs space-y-2">
+      <div class="text-gray-400 font-bold uppercase tracking-wider text-[10px]">💡 Demonstration Verification Tips:</div>
+      <ul class="text-gray-400 space-y-1 list-disc list-inside">
+        <li>Enter active test plates (e.g., <span class="font-mono text-emerald-400">AEB-9021</span>) to view <b class="text-emerald-400">Authorized</b> status.</li>
+        <li>Enter unknown plates (e.g., <span class="font-mono text-rose-400">MSHIKA-01</span>) to demonstrate <b class="text-rose-400">Illegal Operator Alert</b>.</li>
+      </ul>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-center text-xs text-slate-600 py-4 border-t border-slate-900">
+    City of Harare Department of Works & Transport &copy; 2026
+  </footer>
+
+  <script>
+    async function verifyVehicle() {
+      const input = document.getElementById('plate-input');
+      const plate = input.value.trim().toUpperCase();
+      const statusCard = document.getElementById('status-card');
+
+      if (!plate) {
+        alert('Please enter a vehicle registration plate number.');
+        return;
+      }
+
+      statusCard.classList.add('hidden');
+
+      try {
+        const res = await fetch(`/api/v1/enforcement/lookup/${plate}`);
+        const data = await res.json();
+
+        statusCard.classList.remove('hidden');
+
+        if (data.status === 'REGISTERED') {
+          const lastActive = new Date(data.last_seen).toLocaleTimeString();
+          statusCard.innerHTML = `
+            <div class="bg-emerald-950/80 border-2 border-emerald-500/80 rounded-2xl p-5 shadow-2xl space-y-3">
+              <div class="flex justify-between items-start">
+                <span class="bg-emerald-500 text-slate-950 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                  ✅ Authorized Operator
+                </span>
+                <span class="text-emerald-400 font-mono text-xs font-bold">${data.registration_number}</span>
+              </div>
+              <h2 class="text-xl font-bold text-emerald-300">Vehicle Registered & Permitted</h2>
+              <div class="bg-slate-950/60 rounded-xl p-3 text-xs space-y-1.5 font-mono text-gray-300 border border-emerald-900/50">
+                <div class="flex justify-between"><span>Registry Status:</span> <b class="text-emerald-400">Active License</b></div>
+                <div class="flex justify-between"><span>Licensed Capacity:</span> <b>${data.capacity} Commuters</b></div>
+                <div class="flex justify-between"><span>Last GPS Signal:</span> <b>${lastActive}</b></div>
+                <div class="flex justify-between"><span>Recorded Speed:</span> <b>${data.current_speed || 0} km/h</b></div>
+              </div>
+              <div class="text-[11px] text-emerald-400/80 text-center font-medium">
+                Vehicle is compliant with City of Harare CBD transport regulations.
+              </div>
+            </div>
+          `;
+        } else {
+          statusCard.innerHTML = `
+            <div class="bg-rose-950/80 border-2 border-rose-500/80 rounded-2xl p-5 shadow-2xl space-y-3 animate-pulse">
+              <div class="flex justify-between items-start">
+                <span class="bg-rose-600 text-white text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
+                  🚨 Illegal / Mshika-Shika
+                </span>
+                <span class="text-rose-400 font-mono text-xs font-bold">${data.registration_number}</span>
+              </div>
+              <h2 class="text-xl font-bold text-rose-300">UNREGISTERED OPERATOR DETECTED</h2>
+              <p class="text-xs text-rose-200/90 leading-relaxed">
+                This vehicle has no valid municipal permit or registered telemetry record in the transit database.
+              </p>
+              <div class="bg-slate-950/60 rounded-xl p-3 text-xs space-y-1.5 font-mono text-rose-300 border border-rose-900/50">
+                <div class="flex justify-between"><span>Compliance:</span> <b class="text-rose-500">NON-COMPLIANT</b></div>
+                <div class="flex justify-between"><span>Enforcement Action:</span> <b class="text-rose-400">Impound / Fine Eligible</b></div>
+              </div>
+              <button onclick="logViolation('${data.registration_number}')" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg">
+                Log Municipal Enforcement Notice
+              </button>
+            </div>
+          `;
+        }
+      } catch (err) {
+        console.error('Error conducting lookup:', err);
+        alert('Network error while querying enforcement database.');
+      }
+    }
+
+    function logViolation(plate) {
+      alert(`Enforcement alert logged for unregistered vehicle: ${plate}. Citation record generated.`);
+    }
+  </script>
+</body>
+</html>
