@@ -69,10 +69,15 @@ function checkRankGeofence(latitude, longitude) {
 // 2. API ROUTES
 // =========================================================================
 
-// GET route to fetch all active vehicles when maps initially load
+// GET route to fetch active vehicles updated within the last 15 minutes
 app.get('/api/v1/vehicles', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM vehicles ORDER BY updated_at DESC');
+    const query = `
+      SELECT * FROM vehicles 
+      WHERE updated_at >= NOW() - INTERVAL '15 minutes'
+      ORDER BY updated_at DESC;
+    `;
+    const result = await pool.query(query);
     res.status(200).json(result.rows);
   } catch (error) {
     console.error('Error fetching vehicles:', error.message || error);
