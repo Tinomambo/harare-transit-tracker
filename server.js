@@ -31,16 +31,14 @@ app.use(express.static('public'));
 // 1. GEOFENCING & RANK CONFIGURATION
 // =========================================================================
 
-// Major Harare CBD Bus Ranks Configuration
 const HARARE_RANKS = [
   { name: 'Copacabana Rank', lat: -17.8315, lng: 31.0425, radiusMeters: 150 },
   { name: 'Fourth Street Rank', lat: -17.8319, lng: 31.0558, radiusMeters: 150 },
   { name: 'Market Square Rank', lat: -17.8358, lng: 31.0381, radiusMeters: 150 }
 ];
 
-// Helper: Haversine distance calculation (returns distance in meters)
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Earth radius in meters
+  const R = 6371e3;
   const rad1 = lat1 * Math.PI / 180;
   const rad2 = lat2 * Math.PI / 180;
   const deltaLat = (lat2 - lat1) * Math.PI / 180;
@@ -54,7 +52,6 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Helper: Checks if coordinates fall inside any rank geofence
 function checkRankGeofence(latitude, longitude) {
   for (const rank of HARARE_RANKS) {
     const distance = getDistanceInMeters(latitude, longitude, rank.lat, rank.lng);
@@ -69,7 +66,7 @@ function checkRankGeofence(latitude, longitude) {
 // 2. API ROUTES
 // =========================================================================
 
-// GET route to fetch active vehicles updated within the last 15 minutes
+// GET active vehicles updated within the last 15 minutes
 app.get('/api/v1/vehicles', async (req, res) => {
   try {
     const query = `
@@ -85,10 +82,9 @@ app.get('/api/v1/vehicles', async (req, res) => {
   }
 });
 
-// POST route for live driver updates with API key authentication & geofencing
+// POST live location updates
 app.post('/api/v1/tracking/update', async (req, res) => {
   try {
-    // 1. Validate API Key from headers
     const apiKey = req.headers['x-api-key'];
     const VALID_API_KEY = process.env.DRIVER_API_KEY || 'harare_kombi_secret_2026';
 
@@ -99,10 +95,8 @@ app.post('/api/v1/tracking/update', async (req, res) => {
     const { registration_number, latitude, longitude, speed, capacity } = req.body;
     const vehicleCapacity = capacity || 18;
 
-    // 2. Check geofence
     const currentRank = checkRankGeofence(parseFloat(latitude), parseFloat(longitude));
 
-    // 3. Upsert into database
     const query = `
       INSERT INTO vehicles (registration_number, latitude, longitude, speed, capacity, updated_at)
       VALUES ($1, $2, $3, $4, $5, NOW())
@@ -111,7 +105,6 @@ app.post('/api/v1/tracking/update', async (req, res) => {
     `;
     await pool.query(query, [registration_number, latitude, longitude, speed, vehicleCapacity]);
 
-    // 4. Broadcast live socket update to admin & commuter dashboards
     io.emit('location_update', { 
       registration_number, 
       latitude, 
@@ -125,6 +118,15 @@ app.post('/api/v1/tracking/update', async (req, res) => {
     console.error('Error processing location update:', error.message || error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
+});
+
+// POST driver offline notification
+app.post('/api/v1/tracking/offline', (req, res) => {
+  const { registration_number } = req.body;
+  if (registration_number) {
+    io.emit('vehicle_offline', { registration_number });
+  }
+  res.status(200).json({ status: 'offline broadcasted' });
 });
 
 // =========================================================================
