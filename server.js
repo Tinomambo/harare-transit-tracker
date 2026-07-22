@@ -4,50 +4,49 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const { Pool } = require('pg');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' }
-});
+const io = new Server(server, { cors: { origin: '*' } });
 
-// Database pool setup using DATABASE_URL environment variable
+// Supabase client initialization
+// (Find these in Supabase Dashboard -> Project Settings -> API)
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gprvuiygcrniyuzqicmx.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY; 
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl:{
-    rejectUnauthorized:false
-  }
-});
-module.exports = pool;
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 app.use(express.json());
 app.use(cors());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(morgan('dev'));
 app.use(express.static('public'));
 
-// Tracking Update Endpoint
 app.post('/api/v1/tracking/update', async (req, res) => {
   try {
     const { registration_number, latitude, longitude, speed } = req.body;
 
-    // 1. Update/Insert in Supabase Postgres
-    const query = `
-      INSERT INTO vehicles (registration_number, latitude, longitude, speed, updated_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (registration_number) 
-      DO UPDATE SET latitude = $2, longitude = $3, speed = $4, updated_at = NOW();
-    `;
-    await pool.query(query, [registration_number, latitude, longitude, speed]);
+    // Upsert into 'vehicles' table via Supabase API
+    const { data, error } = await supabase
+      .from('vehicles')
+      .upsert({ 
+        registration_number, 
+        latitude, 
+        longitude, 
+        speed, 
+        updated_at: new Date().toISOString() 
+      }, { onConflict: 'registration_number' });
 
-    // 2. Broadcast via Socket.io to live web dashboard
+    if (error) throw error;
+
+    // Broadcast update via Socket.io
     io.emit('location_update', { registration_number, latitude, longitude, speed });
 
     res.status(200).json({ status: 'success' });
   } catch (error) {
-    console.error('Error processing location update:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error processing location update:', error.message || error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
 
