@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Harare Transit — Live Commuter Assistant</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Socket.IO Client -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    #map { height: 40vh; width: 100%; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans flex flex-col min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-gray-800 border-b border-gray-700 p-4 text-center sticky top-0 z-50 shadow-md">
+    <h1 class="text-lg font-bold text-emerald-400">🚍 Harare Transit Tracker</h1>
+    <p class="text-xs text-gray-400">Live Commuter Arrival & Route Assistant</p>
+  </header>
+
+  <!-- Interactive Map -->
+  <div class="relative">
+    <div id="map"></div>
+    <div class="absolute bottom-3 left-3 bg-gray-900/90 border border-gray-700 px-3 py-1 rounded-full text-xs text-emerald-400 font-semibold z-[1000] flex items-center space-x-2 shadow-lg">
+      <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>Live Transport Network</span>
+    </div>
+  </div>
+
+  <!-- Commuter Control Center -->
+  <main class="flex-1 p-4 max-w-lg mx-auto w-full space-y-4">
+    
+    <!-- Route & Vehicle Search -->
+    <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-xl">
+      <label class="block text-xs uppercase font-bold text-gray-400 mb-2">Search Kombi or Location</label>
+      <input id="search-input" type="text" placeholder="Search registration number or rank..." 
+        onkeyup="filterVehicles()"
+        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
+    </div>
+
+    <!-- Live Vehicles List -->
+    <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-xl flex flex-col">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-xs uppercase font-bold text-gray-400 tracking-wider">Active En-Route Kombis</h2>
+        <span id="active-count-badge" class="bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-0.5 rounded-full font-bold">0 Active</span>
+      </div>
+
+      <div id="vehicle-list" class="space-y-2.5 max-h-[260px] overflow-y-auto pr-1">
+        <div class="text-center py-6 text-gray-500 text-xs italic">Searching for active kombis...</div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="text-center text-xs text-gray-600 py-4 border-t border-gray-800">
+    City of Harare Public Transport Project &copy; 2026
+  </footer>
+
+  <script>
+    // 1. Initialize Leaflet Map centered on Harare CBD
+    const HARARE_CBD = [-17.8292, 31.0522];
+    const map = L.map('map', { zoomControl: false }).setView(HARARE_CBD, 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    // Render Rank Geofence Visuals
+    const HARARE_RANKS = [
+      { name: 'Copacabana Rank', lat: -17.8315, lng: 31.0425, radius: 150 },
+      { name: 'Fourth Street Rank', lat: -17.8319, lng: 31.0558, radius: 150 },
+      { name: 'Market Square Rank', lat: -17.8358, lng: 31.0381, radius: 150 }
+    ];
+
+    HARARE_RANKS.forEach(rank => {
+      L.circle([rank.lat, rank.lng], {
+        color: '#3B82F6',
+        fillColor: '#3B82F6',
+        fillOpacity: 0.15,
+        radius: rank.radius
+      }).addTo(map).bindPopup(`<b>${rank.name}</b>`);
+    });
+
+    const vehicleMarkers = {};
+    let vehiclesData = {};
+
+    function createKombiIcon() {
+      return L.divIcon({
+        className: 'custom-kombi-icon',
+        html: `
+          <div style="background-color: #10B981; border: 2px solid white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px rgba(16,185,129,0.8);">
+            <div style="background-color: white; width: 6px; height: 6px; border-radius: 50%;"></div>
+          </div>
+        `,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+    }
+
+    // 2. Render Cards in Commuter List
+    function renderVehicleList() {
+      const listContainer = document.getElementById('vehicle-list');
+      const badge = document.getElementById('active-count-badge');
+      const searchTerm = document.getElementById('search-input').value.toLowerCase();
+
+      const vehicles = Object.values(vehiclesData).filter(v => 
+        v.registration_number.toLowerCase().includes(searchTerm) ||
+        (v.current_rank && v.current_rank.toLowerCase().includes(searchTerm))
+      );
+
+      badge.innerText = `${vehicles.length} Active`;
+
+      if (vehicles.length === 0) {
+        listContainer.innerHTML = `<div class="text-center py-6 text-gray-500 text-xs">No active kombis found matching your search.</div>`;
+        return;
+      }
+
+      listContainer.innerHTML = '';
+      vehicles.forEach(v => {
+        const card = document.createElement('div');
+        card.className = 'bg-gray-900/90 border border-gray-700/80 rounded-xl p-3 flex justify-between items-center transition hover:border-emerald-500/60 cursor-pointer shadow-sm';
+        card.onclick = () => focusVehicle(v.latitude, v.longitude);
+
+        card.innerHTML = `
+          <div>
+            <div class="font-bold text-emerald-400 text-sm flex items-center gap-1.5">
+              <span>🚍</span> ${v.registration_number}
+            </div>
+            <div class="text-xs text-gray-400 mt-1">
+              ${v.current_rank ? `📍 <span class="text-amber-400 font-semibold">${v.current_rank}</span>` : '🛣️ In Transit (CBD Route)'}
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="inline-block bg-gray-800 border border-gray-700 text-gray-200 text-xs px-2.5 py-1 rounded-lg font-mono font-bold">
+              ${v.speed || 0} km/h
+            </span>
+          </div>
+        `;
+        listContainer.appendChild(card);
+      });
+    }
+
+    function focusVehicle(lat, lng) {
+      map.flyTo([lat, lng], 16, { animate: true, duration: 1.2 });
+    }
+
+    function updateVehicle(data) {
+      const { registration_number, latitude, longitude, speed, current_rank } = data;
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      vehiclesData[registration_number] = { registration_number, latitude: lat, longitude: lng, speed, current_rank };
+
+      // Update Map Marker
+      if (vehicleMarkers[registration_number]) {
+        vehicleMarkers[registration_number].setLatLng([lat, lng]);
+      } else {
+        vehicleMarkers[registration_number] = L.marker([lat, lng], { icon: createKombiIcon() })
+          .addTo(map)
+          .bindPopup(`<b>🚍 ${registration_number}</b><br>Speed: ${speed || 0} km/h<br>${current_rank ? 'At: ' + current_rank : 'En-route'}`);
+      }
+
+      renderVehicleList();
+    }
+
+    function filterVehicles() {
+      renderVehicleList();
+    }
+
+    // 3. Fetch Vehicles on Initial Page Load
+    async function fetchVehicles() {
+      try {
+        const res = await fetch('/api/v1/vehicles');
+        if (res.ok) {
+          const list = await res.json();
+          list.forEach(v => updateVehicle(v));
+        }
+      } catch (err) {
+        console.warn('Fetch error:', err);
+      }
+    }
+    fetchVehicles();
+
+    // 4. Socket.IO Live Telemetry Feed
+    const socket = io();
+    socket.on('location_update', (data) => {
+      updateVehicle(data);
+    });
+  </script>
+</body>
+</html>

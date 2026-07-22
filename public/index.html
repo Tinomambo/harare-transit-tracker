@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Public Transport Tracking System — City of Harare CBD</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Socket.IO Client -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    #map {
+      height: calc(100vh - 80px);
+      width: 100%;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans flex flex-col h-screen">
+
+  <!-- Header -->
+  <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center h-[80px]">
+    <h1 class="text-xl font-bold tracking-wide text-white">
+      Smart Public Transport Tracking System — <span class="text-emerald-400">City of Harare CBD</span>
+    </h1>
+    <div class="flex items-center space-x-2">
+      <span class="relative flex h-3 w-3">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+      </span>
+      <span id="server-status" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-sm font-semibold">
+        Server Online
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- Map Container -->
+    <div class="flex-1 relative">
+      <div id="map"></div>
+    </div>
+
+    <!-- Sidebar Info Panel -->
+    <aside class="w-80 bg-gray-800 border-l border-gray-700 p-6 flex flex-col justify-between space-y-6">
+      
+      <div>
+        <!-- Stats Card -->
+        <div class="bg-gray-900/60 border border-gray-700 rounded-xl p-5 mb-6">
+          <h2 class="text-xs uppercase font-bold text-gray-400 tracking-wider mb-2">Active System Stats</h2>
+          <div class="flex items-baseline justify-between">
+            <span class="text-sm text-gray-300">Live Tracked Vehicles:</span>
+            <span id="live-vehicle-count" class="text-3xl font-extrabold text-emerald-400">0</span>
+          </div>
+        </div>
+
+        <!-- Live Event Feed -->
+        <div class="bg-gray-900/60 border border-gray-700 rounded-xl p-5 flex flex-col h-[320px]">
+          <h2 class="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3">Live Event Feed</h2>
+          <div id="event-feed" class="flex-1 overflow-y-auto space-y-2 text-xs font-mono text-gray-400 pr-1">
+            <div class="text-gray-500 italic">Waiting for incoming GPS updates...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="text-xs text-gray-500 text-center">
+        Harare Transit Tracker &copy; 2026
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Client Application Script -->
+  <script>
+    // 1. Initialize Leaflet Map centered on Harare CBD
+    const HARARE_CBD = [-17.8292, 31.0522];
+    const map = L.map('map').setView(HARARE_CBD, 14);
+    // Add Harare Rank Geofence Visuals to Admin Map
+const HARARE_RANKS = [
+  { name: 'Copacabana Rank', lat: -17.8315, lng: 31.0425, radius: 150 },
+  { name: 'Fourth Street Rank', lat: -17.8319, lng: 31.0558, radius: 150 },
+  { name: 'Market Square Rank', lat: -17.8358, lng: 31.0381, radius: 150 }
+];
+
+HARARE_RANKS.forEach(rank => {
+  L.circle([rank.lat, rank.lng], {
+    color: '#3B82F6',
+    fillColor: '#3B82F6',
+    fillOpacity: 0.2,
+    radius: rank.radius
+  }).addTo(map).bindPopup(`<b>${rank.name}</b> (Terminal Zone)`);
+});
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Dictionary to hold Leaflet markers key-valued by registration_number
+    const vehicleMarkers = {};
+
+    // 2. Custom Kombi Icon Marker
+    function createKombiIcon() {
+      return L.divIcon({
+        className: 'custom-kombi-icon',
+        html: `
+          <div style="background-color: #10B981; border: 2px solid #FFFFFF; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);">
+            <div style="background-color: white; width: 8px; height: 8px; border-radius: 50%;"></div>
+          </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+    }
+
+    // Helper: Log event to Feed
+    function addFeedLog(message) {
+      const feed = document.getElementById('event-feed');
+      // Clear initial placeholder text
+      if (feed.querySelector('.italic')) {
+        feed.innerHTML = '';
+      }
+      
+      const timeStr = new Date().toLocaleTimeString();
+      const logItem = document.createElement('div');
+      logItem.className = 'bg-gray-800/80 p-2 rounded border border-gray-700/50 text-gray-300';
+      logItem.innerHTML = `<span class="text-emerald-400 font-bold">[${timeStr}]</span> ${message}`;
+      
+      feed.prepend(logItem);
+      
+      // Limit feed to last 20 messages
+      if (feed.children.length > 20) {
+        feed.removeChild(feed.lastChild);
+      }
+    }
+
+    // Helper: Update Marker Location & Stats
+    function updateVehicleOnMap(data) {
+      const { registration_number, latitude, longitude, speed } = data;
+      const lat = parseFloat(latitude);
+      const lng = parseFloat(longitude);
+
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      const popupContent = `
+        <div style="color: #111827; font-sans">
+          <strong style="font-size: 14px;">🚍 Kombi: ${registration_number}</strong><br>
+          <span style="font-size: 12px; color: #4B5563;">Speed: ${speed || 0} km/h</span>
+        </div>
+      `;
+
+      if (vehicleMarkers[registration_number]) {
+        // Move existing marker smoothly
+        vehicleMarkers[registration_number].setLatLng([lat, lng]);
+        vehicleMarkers[registration_number].getPopup().setContent(popupContent);
+      } else {
+        // Create new marker
+        vehicleMarkers[registration_number] = L.marker([lat, lng], { icon: createKombiIcon() })
+          .addTo(map)
+          .bindPopup(popupContent);
+          
+        addFeedLog(`New vehicle connected: <span class="text-white font-semibold">${registration_number}</span>`);
+      }
+
+      // Update vehicle counter UI
+      const countElement = document.getElementById('live-vehicle-count');
+      if (countElement) {
+        countElement.innerText = Object.keys(vehicleMarkers).length;
+      }
+    }
+
+    // 3. Initial Fetch on Page Load
+    async function fetchActiveVehicles() {
+      try {
+        const response = await fetch('/api/v1/vehicles');
+        if (response.ok) {
+          const vehicles = await response.json();
+          vehicles.forEach(vehicle => updateVehicleOnMap(vehicle));
+        }
+      } catch (err) {
+        console.warn('Initial vehicle fetch error:', err);
+      }
+    }
+
+    // Run fetch on load
+    fetchActiveVehicles();
+
+    // 4. Initialize Socket.IO connection
+    const socket = io();
+
+    socket.on('connect', () => {
+      console.log('Connected to real-time tracker socket server.');
+      document.getElementById('server-status').innerText = 'Server Online';
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('server-status').innerText = 'Disconnected';
+      document.getElementById('server-status').className = 'bg-rose-600/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded-md text-sm font-semibold';
+    });
+
+    // Listen for live location updates from simulator
+    socket.on('location_update', (data) => {
+      console.log('Live location update:', data);
+      updateVehicleOnMap(data);
+      addFeedLog(`Update from <span class="text-white font-semibold">${data.registration_number}</span> (${data.speed || 0} km/h)`);
+    });
+  </script>
+</body>
+</html>
