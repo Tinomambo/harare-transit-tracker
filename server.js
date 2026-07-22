@@ -4,18 +4,20 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const { createClient } = require('@supabase/supabase-js');
+const { Pool } = require('pg');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, {
+  cors: { origin: '*' }
+});
 
-// Supabase client initialization
-// (Find these in Supabase Dashboard -> Project Settings -> API)
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://gprvuiygcrniyuzqicmx.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY; 
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 app.use(express.json());
 app.use(cors());
@@ -27,20 +29,14 @@ app.post('/api/v1/tracking/update', async (req, res) => {
   try {
     const { registration_number, latitude, longitude, speed } = req.body;
 
-    // Upsert into 'vehicles' table via Supabase API
-    const { data, error } = await supabase
-      .from('vehicles')
-      .upsert({ 
-        registration_number, 
-        latitude, 
-        longitude, 
-        speed, 
-        updated_at: new Date().toISOString() 
-      }, { onConflict: 'registration_number' });
+    const query = `
+      INSERT INTO vehicles (registration_number, latitude, longitude, speed, updated_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT (registration_number) 
+      DO UPDATE SET latitude = $2, longitude = $3, speed = $4, updated_at = NOW();
+    `;
+    await pool.query(query, [registration_number, latitude, longitude, speed]);
 
-    if (error) throw error;
-
-    // Broadcast update via Socket.io
     io.emit('location_update', { registration_number, latitude, longitude, speed });
 
     res.status(200).json({ status: 'success' });
