@@ -3,178 +3,194 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kombi Driver GPS Tracker — Harare Transit</title>
+  <title>Harare Transit — Driver GPS Beacon</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col justify-center items-center p-6">
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col justify-between p-4">
 
-  <div class="bg-gray-800 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-6">
-    <div class="text-center">
-      <h1 class="text-2xl font-bold text-emerald-400">🚍 Driver GPS Beacon</h1>
-      <p class="text-sm text-gray-400 mt-1">City of Harare Public Transport System</p>
+  <!-- Header -->
+  <header class="text-center py-4 border-b border-gray-800">
+    <div class="inline-block bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-1">
+      📱 Authenticated Driver Beacon
+    </div>
+    <h1 class="text-xl font-bold text-white">City of Harare Kombi Telemetry</h1>
+  </header>
+
+  <main class="max-w-md mx-auto w-full space-y-6 my-auto">
+
+    <!-- Auth Card (Shown initially) -->
+    <div id="auth-card" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+      <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Driver Verification</h2>
+      
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Vehicle Registration Plate</label>
+        <input id="driver-plate" type="text" placeholder="e.g. AEB-9021" 
+          class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-lg font-mono font-bold text-amber-400 uppercase focus:outline-none focus:border-amber-500" />
+      </div>
+
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">4-Digit Driver PIN</label>
+        <input id="driver-pin" type="password" maxlength="6" placeholder="••••" 
+          class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-lg font-mono font-bold text-amber-400 focus:outline-none focus:border-amber-500" />
+      </div>
+
+      <button onclick="authenticateDriver()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-lg">
+        Authenticate Vehicle & Unlock
+      </button>
+
+      <div id="auth-error" class="text-xs text-rose-400 font-bold text-center hidden"></div>
     </div>
 
-    <!-- Registration Input -->
-    <div>
-      <label class="block text-xs uppercase font-semibold text-gray-400 mb-2">Vehicle Registration Number</label>
-      <input id="reg-number" type="text" placeholder="e.g. ACZ-4412" value="ACZ-4412" 
-        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-lg font-bold text-white focus:outline-none focus:border-emerald-500 uppercase">
-    </div>
+    <!-- Tracking Control Panel (Hidden until authenticated) -->
+    <div id="tracking-card" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5 text-center">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <span class="text-xs text-gray-400 font-mono">PLATE: <b id="active-plate" class="text-amber-400 text-sm"></b></span>
+        <span id="status-badge" class="bg-gray-800 text-gray-400 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Offline</span>
+      </div>
 
-    <!-- Live Telemetry Status -->
-    <div class="bg-gray-900/80 border border-gray-700/80 rounded-xl p-4 space-y-2 font-mono text-sm">
-      <div class="flex justify-between">
-        <span class="text-gray-400">Status:</span>
-        <span id="status-text" class="text-amber-400 font-bold">Offline</span>
-      </div>
-      <div class="flex justify-between">
-        <span class="text-gray-400">Latitude:</span>
-        <span id="lat-text" class="text-white">--</span>
-      </div>
-      <div class="flex justify-between">
-        <span class="text-gray-400">Longitude:</span>
-        <span id="lng-text" class="text-white">--</span>
-      </div>
-      <div class="flex justify-between">
-        <span class="text-gray-400">Speed:</span>
-        <span id="speed-text" class="text-emerald-400 font-bold">0 km/h</span>
+      <button id="toggle-btn" onclick="toggleTracking()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 rounded-2xl text-lg shadow-xl transition active:scale-95">
+        Start Route Tracking
+      </button>
+
+      <!-- Telemetry Feedback -->
+      <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 text-xs font-mono space-y-2 text-left">
+        <div class="flex justify-between text-gray-400"><span>Recorded Speed:</span> <b id="speed-display" class="text-white">0 km/h</b></div>
+        <div class="flex justify-between text-gray-400"><span>Latitude:</span> <b id="lat-display" class="text-gray-300">--</b></div>
+        <div class="flex justify-between text-gray-400"><span>Longitude:</span> <b id="lng-display" class="text-gray-300">--</b></div>
+        <div class="flex justify-between text-gray-400"><span>Screen Lock:</span> <b id="wake-display" class="text-amber-400">Inactive</b></div>
       </div>
     </div>
 
-    <!-- Toggle Tracking Button -->
-    <button id="toggle-btn" onclick="toggleTracking()" 
-      class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl text-lg transition duration-200 shadow-lg">
-      Start Tracking Route
-    </button>
-  </div>
+  </main>
 
- <script>
-  let watchId = null;
-  let isTracking = false;
-  let wakeLock = null;
+  <footer class="text-center text-xs text-slate-600 py-2">
+    City of Harare Department of Works & Transport &copy; 2026
+  </footer>
 
-  const API_URL = 'https://harare-transit-tracker.onrender.com/api/v1/tracking/update';
-  const API_KEY = 'harare_kombi_secret_2026';
+  <script>
+    let isTracking = false;
+    let watchId = null;
+    let wakeLock = null;
+    let authenticatedPlate = '';
+    const API_KEY = 'harare-secret-key-2026';
 
-  // Request Screen Wake Lock
-  async function requestWakeLock() {
-    try {
-      if ('wakeLock' in navigator) {
-        wakeLock = await navigator.wakeLock.request('screen');
-        console.log('💡 Screen Wake Lock active.');
+    async function authenticateDriver() {
+      const plateInput = document.getElementById('driver-plate').value.trim();
+      const pinInput = document.getElementById('driver-pin').value.trim();
+      const errorDiv = document.getElementById('auth-error');
+
+      errorDiv.classList.add('hidden');
+
+      if (!plateInput || !pinInput) {
+        errorDiv.innerText = 'Please enter both your plate number and PIN.';
+        errorDiv.classList.remove('hidden');
+        return;
       }
-    } catch (err) {
-      console.warn(`Wake Lock Error: ${err.message}`);
-    }
-  }
 
-  // Release Screen Wake Lock
-  function releaseWakeLock() {
-    if (wakeLock !== null) {
-      wakeLock.release().then(() => {
-        wakeLock = null;
-        console.log('💡 Screen Wake Lock released.');
-      });
-    }
-  }
+      try {
+        const res = await fetch('/api/v1/driver/authenticate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registration_number: plateInput, pin: pinInput })
+        });
+        const data = await res.json();
 
-  // NEW: Send offline notification to server
-  async function sendOfflineStatus() {
-    const regNumber = document.getElementById('reg-number').value.trim().toUpperCase();
-    if (!regNumber) return;
-
-    try {
-      await fetch('https://harare-transit-tracker.onrender.com/api/v1/tracking/offline', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': API_KEY
-        },
-        body: JSON.stringify({ registration_number: regNumber })
-      });
-    } catch (err) {
-      console.error('Error sending offline status:', err);
-    }
-  }
-
-  // Toggle Tracking Handler
-  async function toggleTracking() {
-    const regInput = document.getElementById('reg-number').value.trim();
-    if (!regInput) {
-      alert('Please enter a vehicle registration number!');
-      return;
+        if (res.ok) {
+          authenticatedPlate = data.registration_number;
+          document.getElementById('active-plate').innerText = authenticatedPlate;
+          document.getElementById('auth-card').classList.add('hidden');
+          document.getElementById('tracking-card').classList.remove('hidden');
+        } else {
+          errorDiv.innerText = data.error || 'Authentication failed.';
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorDiv.innerText = 'Network error connecting to server.';
+        errorDiv.classList.remove('hidden');
+      }
     }
 
-    const btn = document.getElementById('toggle-btn');
-    const statusText = document.getElementById('status-text');
-
-    if (!isTracking) {
-      if ("geolocation" in navigator) {
-        await requestWakeLock();
-
-        watchId = navigator.geolocation.watchPosition(
-          sendGpsUpdate,
-          handleGpsError,
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-        );
-
-        isTracking = true;
-        btn.innerText = 'Stop Tracking';
-        btn.className = 'w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 rounded-xl text-lg transition duration-200 shadow-lg';
-        statusText.innerText = 'Transmitting GPS...';
-        statusText.className = 'text-emerald-400 font-bold animate-pulse';
+    async function toggleTracking() {
+      if (!isTracking) {
+        startTracking();
       } else {
-        alert('Geolocation is not supported on this browser/device.');
+        stopTracking();
       }
-    } else {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      releaseWakeLock();
+    }
 
-      // NEW: Trigger offline status when driver stops tracking
-      sendOfflineStatus();
+    async function startTracking() {
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
+      }
+
+      // Request Screen Wake Lock
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          document.getElementById('wake-display').innerText = 'Active (Screen On)';
+        } catch (e) {
+          console.warn('Wake Lock error:', e);
+        }
+      }
+
+      watchId = navigator.geolocation.watchPosition(sendTelemetry, handleGpsError, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000
+      });
+
+      isTracking = true;
+      document.getElementById('status-badge').className = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase animate-pulse';
+      document.getElementById('status-badge').innerText = 'Transmitting Live';
+      document.getElementById('toggle-btn').className = 'w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-5 rounded-2xl text-lg shadow-xl transition active:scale-95';
+      document.getElementById('toggle-btn').innerText = 'Stop Tracking';
+    }
+
+    function stopTracking() {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      if (wakeLock) { wakeLock.release(); wakeLock = null; }
 
       isTracking = false;
-      btn.innerText = 'Start Tracking Route';
-      btn.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl text-lg transition duration-200 shadow-lg';
-      statusText.innerText = 'Offline';
-      statusText.className = 'text-amber-400 font-bold';
+      document.getElementById('status-badge').className = 'bg-gray-800 text-gray-400 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase';
+      document.getElementById('status-badge').innerText = 'Offline';
+      document.getElementById('toggle-btn').className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 rounded-2xl text-lg shadow-xl transition active:scale-95';
+      document.getElementById('toggle-btn').innerText = 'Start Route Tracking';
+      document.getElementById('wake-display').innerText = 'Inactive';
     }
-  }
 
-  // Send GPS Payload
-  async function sendGpsUpdate(position) {
-    const regNumber = document.getElementById('reg-number').value.trim().toUpperCase();
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-    const speed = position.coords.speed ? Math.round(position.coords.speed * 3.6) : 0;
+    async function sendTelemetry(pos) {
+      const { latitude, longitude, speed } = pos.coords;
+      const speedKmh = Math.round((speed || 0) * 3.6);
 
-    document.getElementById('lat-text').innerText = lat.toFixed(6);
-    document.getElementById('lng-text').innerText = lng.toFixed(6);
-    document.getElementById('speed-text').innerText = `${speed} km/h`;
+      document.getElementById('lat-display').innerText = latitude.toFixed(5);
+      document.getElementById('lng-display').innerText = longitude.toFixed(5);
+      document.getElementById('speed-display').innerText = `${speedKmh} km/h`;
 
-    try {
-      await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': API_KEY
-        },
-        body: JSON.stringify({
-          registration_number: regNumber,
-          latitude: lat,
-          longitude: lng,
-          speed: speed
-        })
-      });
-    } catch (err) {
-      console.error('Error sending GPS update:', err);
+      try {
+        await fetch('/api/v1/tracking/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': API_KEY
+          },
+          body: JSON.stringify({
+            registration_number: authenticatedPlate,
+            latitude,
+            longitude,
+            speed: speedKmh,
+            capacity: 18
+          })
+        });
+      } catch (err) {
+        console.error('Failed to send position:', err);
+      }
     }
-  }
 
-  function handleGpsError(err) {
-    console.error('GPS Location Error:', err.message);
-    alert(`Location Error: ${err.message}. Ensure location services are ON.`);
-  }
-</script>
+    function handleGpsError(err) {
+      alert(`GPS Error (${err.code}): ${err.message}`);
+      stopTracking();
+    }
+  </script>
 </body>
 </html>
