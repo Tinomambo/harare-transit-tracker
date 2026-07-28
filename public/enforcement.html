@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>City of Harare — Traffic Officer Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col justify-between p-4">
+
+  <!-- Officer Login Barrier -->
+  <div id="officer-modal" class="fixed inset-0 bg-slate-950/95 z-[9999] flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="text-center space-y-1">
+        <span class="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30 uppercase">
+          👮 Wardens Only
+        </span>
+        <h2 class="text-lg font-bold text-white mt-2">Officer Authentication</h2>
+        <p class="text-xs text-gray-400">Municipal Field Compliance Portal</p>
+      </div>
+
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Officer Username</label>
+        <input id="off-user" type="text" value="officer" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-500" />
+      </div>
+
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Password</label>
+        <input id="off-pass" type="password" value="harare2026" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-500" />
+      </div>
+
+      <button onclick="loginOfficer()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
+        Unlock Enforcement Tool
+      </button>
+      <p id="off-error" class="text-xs text-rose-400 text-center font-bold hidden"></p>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="bg-slate-900 border-b border-amber-500/30 p-4 text-center rounded-2xl">
+    <h1 class="text-lg font-bold text-white">City of Harare Compliance Verification</h1>
+    <p class="text-xs text-gray-400">Municipal Traffic Field Operations</p>
+  </header>
+
+  <main class="max-w-md mx-auto w-full space-y-5 my-auto">
+    
+    <!-- Plate Lookup Card -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl">
+      <label class="block text-xs font-bold text-gray-300 uppercase mb-2">Check Registration Plate</label>
+      <div class="flex gap-2">
+        <input id="plate-input" type="text" placeholder="e.g. AEB-9021" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-lg font-mono font-bold text-amber-400 uppercase focus:outline-none focus:border-amber-500" />
+        <button onclick="verifyVehicle()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-5 py-3 rounded-xl text-sm transition">
+          Query
+        </button>
+      </div>
+    </div>
+
+    <!-- Status Output -->
+    <div id="status-card" class="hidden"></div>
+
+  </main>
+
+  <footer class="text-center text-xs text-slate-600 py-2">
+    City of Harare Transport Enforcement &copy; 2026
+  </footer>
+
+  <script>
+    async function loginOfficer() {
+      const user = document.getElementById('off-user').value;
+      const pass = document.getElementById('off-pass').value;
+      const err = document.getElementById('off-error');
+
+      try {
+        const res = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+
+        if (res.ok && (data.role === 'enforcement' || data.role === 'admin')) {
+          document.getElementById('officer-modal').classList.add('hidden');
+        } else {
+          err.innerText = 'Unauthorized officer credentials.';
+          err.classList.remove('hidden');
+        }
+      } catch (e) {
+        err.innerText = 'Connection error.';
+        err.classList.remove('hidden');
+      }
+    }
+
+    async function verifyVehicle() {
+      const plate = document.getElementById('plate-input').value.trim().toUpperCase();
+      const statusCard = document.getElementById('status-card');
+
+      if (!plate) return;
+
+      try {
+        const res = await fetch(`/api/v1/enforcement/lookup/${plate}`);
+        const data = await res.json();
+
+        statusCard.classList.remove('hidden');
+
+        if (data.status === 'REGISTERED') {
+          statusCard.innerHTML = `
+            <div class="bg-emerald-950/80 border-2 border-emerald-500/80 rounded-2xl p-5 shadow-2xl space-y-2">
+              <div class="flex justify-between font-mono text-xs font-bold text-emerald-400">
+                <span>✅ REGISTERED OPERATOR</span>
+                <span>${data.registration_number}</span>
+              </div>
+              <p class="text-xs text-gray-300">Vehicle holds an active municipal permit and valid driver PIN profile.</p>
+            </div>
+          `;
+        } else {
+          statusCard.innerHTML = `
+            <div class="bg-rose-950/80 border-2 border-rose-500/80 rounded-2xl p-5 shadow-2xl space-y-2">
+              <div class="flex justify-between font-mono text-xs font-bold text-rose-400">
+                <span>🚨 UNREGISTERED / ILLEGAL OPERATOR</span>
+                <span>${data.registration_number}</span>
+              </div>
+              <p class="text-xs text-rose-200">No active PIN or registry record found for this plate. Operator is non-compliant.</p>
+            </div>
+          `;
+        }
+      } catch (e) {
+        alert('Error contacting enforcement server.');
+      }
+    }
+  </script>
+</body>
+</html>
