@@ -20,6 +20,77 @@ const pool = new Pool({
   }
 });
 
+
+// 1. Admin & Officer Login Route
+app.post('/api/v1/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const result = await pool.query(
+      'SELECT * FROM system_users WHERE username = $1 AND password = $2',
+      [username, password]
+    );
+
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      res.status(200).json({ status: 'success', role: user.role, username: user.username });
+    } else {
+      res.status(401).json({ error: 'Invalid username or password' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Authentication error' });
+  }
+});
+
+// 2. Admin Route: Register Vehicle & Generate Driver PIN
+app.post('/api/v1/admin/register-vehicle', async (req, res) => {
+  try {
+    const { registration_number, capacity, pin } = req.body;
+    const plate = registration_number.trim().toUpperCase();
+
+    const query = `
+      INSERT INTO vehicles (registration_number, capacity, pin, latitude, longitude, speed, updated_at)
+      VALUES ($1, $2, $3, -17.8315, 31.0425, 0, NOW())
+      ON CONFLICT (registration_number) 
+      DO UPDATE SET capacity = $2, pin = $3;
+    `;
+    await pool.query(query, [plate, capacity || 18, pin]);
+
+    res.status(200).json({ status: 'success', message: `Vehicle ${plate} registered with PIN ${pin}` });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to register vehicle' });
+  }
+});
+
+// 3. Driver PIN Authentication Route
+app.post('/api/v1/driver/authenticate', async (req, res) => {
+  try {
+    const { registration_number, pin } = req.body;
+    const plate = registration_number.trim().toUpperCase();
+
+    const result = await pool.query(
+      'SELECT * FROM vehicles WHERE UPPER(registration_number) = $1 AND pin = $2',
+      [plate, pin]
+    );
+
+    if (result.rows.length > 0) {
+      res.status(200).json({ status: 'authenticated', registration_number: plate });
+    } else {
+      res.status(401).json({ error: 'Invalid registration number or PIN. Contact Administrator.' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Authentication processing error' });
+  }
+});
+
+
+
+app.use(express.static('public'));
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
 // Middleware
 app.use(express.json());
 app.use(cors());
