@@ -245,6 +245,10 @@ app.get('/api/v1/vehicles', async (req, res) => {
     return res.status(500).json({ error: 'Failed to retrieve active fleet data' });
   }
 });
+// Serve Gateway Portal as the default landing page
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/public/portal.html');
+});
 
 // =========================================================================
 // 5. STATIC FILES & SINGLE SERVER PORT LISTEN
