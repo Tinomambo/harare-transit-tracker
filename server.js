@@ -204,10 +204,6 @@ app.post('/api/v1/tracking/offline', (req, res) => {
 // 3. SERVER INITIALIZATION
 // =========================================================================
 
-const PORT = process.env.PORT || 10000;
-// =========================================================================
-// ENFORCEMENT & COMPLIANCE ENDPOINTS
-// =========================================================================
 
 // GET Vehicle Compliance Status
 app.get('/api/v1/enforcement/lookup/:plate', async (req, res) => {
