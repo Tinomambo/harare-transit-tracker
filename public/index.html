@@ -3,233 +3,194 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart Public Transport Tracking System — City of Harare CBD</title>
-
-  <!-- Tailwind CSS -->
+  <title>Harare Transit — Admin Operations Dashboard</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Socket.IO Client -->
   <script src="/socket.io/socket.io.js"></script>
-
-  <style>
-    #map {
-      height: calc(100vh - 80px);
-      width: 100%;
-    }
-  </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans flex flex-col h-screen">
+<body class="bg-slate-950 text-slate-100 font-sans h-screen flex flex-col overflow-hidden">
+
+  <!-- Admin Login Modal Barrier -->
+  <div id="login-modal" class="fixed inset-0 bg-slate-950/95 z-[9999] flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="text-center space-y-1">
+        <span class="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30 uppercase">
+          🔒 Restrict Access
+        </span>
+        <h2 class="text-lg font-bold text-white mt-2">Administrator Login</h2>
+        <p class="text-xs text-gray-400">City of Harare Central Operations</p>
+      </div>
+
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Username</label>
+        <input id="admin-user" type="text" value="admin" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-500" />
+      </div>
+
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Password</label>
+        <input id="admin-pass" type="password" value="harare2026" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-500" />
+      </div>
+
+      <button onclick="loginAdmin()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-xl text-xs transition">
+        Authenticate Dashboard
+      </button>
+      <p id="admin-error" class="text-xs text-rose-400 text-center font-bold hidden"></p>
+    </div>
+  </div>
 
   <!-- Header -->
-  <header class="bg-gray-800 border-b border-gray-700 px-6 py-4 flex justify-between items-center h-[80px]">
-    <h1 class="text-xl font-bold tracking-wide text-white">
-      Smart Public Transport Tracking System — <span class="text-emerald-400">City of Harare CBD</span>
-    </h1>
-    <div class="flex items-center space-x-2">
-      <span class="relative flex h-3 w-3">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-      </span>
-      <span id="server-status" class="bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-md text-sm font-semibold">
-        Server Online
-      </span>
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex justify-between items-center shadow-lg z-10">
+    <div class="flex items-center gap-3">
+      <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+      <h1 class="text-base font-bold text-white tracking-wide">City of Harare CBD Fleet Control</h1>
+    </div>
+    <div class="flex items-center gap-4 text-xs font-mono">
+      <span class="text-slate-400">Active Fleet: <b id="fleet-count" class="text-emerald-400 text-sm">0</b> vehicles</span>
+      <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-gray-300 border border-slate-700">Lock Session</button>
     </div>
   </header>
 
-  <!-- Main Content Layout -->
-  <div class="flex flex-1 overflow-hidden">
+  <!-- Main Layout -->
+  <div class="flex-1 flex overflow-hidden">
     
     <!-- Map Container -->
-    <div class="flex-1 relative">
-      <div id="map"></div>
-    </div>
+    <div id="map" class="flex-1 h-full z-0"></div>
 
-    <!-- Sidebar Info Panel -->
-    <aside class="w-80 bg-gray-800 border-l border-gray-700 p-6 flex flex-col justify-between space-y-6">
+    <!-- Side Control Panel -->
+    <aside class="w-80 bg-slate-900 border-l border-slate-800 p-4 flex flex-col gap-4 overflow-y-auto">
       
-      <div>
-        <!-- Stats Card -->
-        <div class="bg-gray-900/60 border border-gray-700 rounded-xl p-5 mb-6">
-          <h2 class="text-xs uppercase font-bold text-gray-400 tracking-wider mb-2">Active System Stats</h2>
-          <div class="flex items-baseline justify-between">
-            <span class="text-sm text-gray-300">Live Tracked Vehicles:</span>
-            <span id="live-vehicle-count" class="text-3xl font-extrabold text-emerald-400">0</span>
-          </div>
+      <!-- Register Vehicle & Driver PIN -->
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+        <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider">➕ Register Vehicle & Driver PIN</h2>
+        <div>
+          <input id="reg-plate" type="text" placeholder="Plate (e.g. AEB-9021)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white uppercase mb-2 focus:outline-none focus:border-amber-500">
+          <input id="reg-pin" type="text" maxlength="6" placeholder="Driver Access PIN (e.g. 1234)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white mb-2 focus:outline-none focus:border-amber-500">
+          <button onclick="registerVehicle()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 rounded-lg text-xs transition">
+            Save & Generate PIN
+          </button>
         </div>
+        <div id="reg-status" class="text-[11px] hidden"></div>
+      </div>
 
-        <!-- Live Event Feed -->
-        <div class="bg-gray-900/60 border border-gray-700 rounded-xl p-5 flex flex-col h-[320px]">
-          <h2 class="text-xs uppercase font-bold text-gray-400 tracking-wider mb-3">Live Event Feed</h2>
-          <div id="event-feed" class="flex-1 overflow-y-auto space-y-2 text-xs font-mono text-gray-400 pr-1">
-            <div class="text-gray-500 italic">Waiting for incoming GPS updates...</div>
-          </div>
+      <!-- Active Fleet List -->
+      <div class="flex-1 flex flex-col min-h-0">
+        <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Live Fleet Telemetry</h2>
+        <div id="vehicle-list" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+          <div class="text-gray-500 italic text-center py-4">Waiting for vehicle telemetry...</div>
         </div>
       </div>
 
-      <!-- Footer Info -->
-      <div class="text-xs text-gray-500 text-center">
-        Harare Transit Tracker &copy; 2026
-      </div>
     </aside>
-
   </div>
 
-  <!-- Client Application Script -->
   <script>
-    // 1. Initialize Leaflet Map centered on Harare CBD
-    const HARARE_CBD = [-17.8292, 31.0522];
-    const map = L.map('map').setView(HARARE_CBD, 14);
-    // Add Harare Rank Geofence Visuals to Admin Map
-const HARARE_RANKS = [
-  { name: 'Copacabana Rank', lat: -17.8315, lng: 31.0425, radius: 150 },
-  { name: 'Fourth Street Rank', lat: -17.8319, lng: 31.0558, radius: 150 },
-  { name: 'Market Square Rank', lat: -17.8358, lng: 31.0381, radius: 150 }
-];
+    let map, socket;
+    let markers = {};
 
-HARARE_RANKS.forEach(rank => {
-  L.circle([rank.lat, rank.lng], {
-    color: '#3B82F6',
-    fillColor: '#3B82F6',
-    fillOpacity: 0.2,
-    radius: rank.radius
-  }).addTo(map).bindPopup(`<b>${rank.name}</b> (Terminal Zone)`);
-});
+    // Initialize Leaflet Map
+    function initMap() {
+      map = L.map('map').setView([-17.8315, 31.0425], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+      // Add Terminal Rank Markers
+      const ranks = [
+        { name: 'Copacabana Rank', lat: -17.8315, lng: 31.0425 },
+        { name: 'Fourth Street Rank', lat: -17.8319, lng: 31.0558 },
+        { name: 'Market Square Rank', lat: -17.8358, lng: 31.0381 }
+      ];
 
-    // Dictionary to hold Leaflet markers key-valued by registration_number
-    const vehicleMarkers = {};
-
-    // 2. Custom Kombi Icon Marker
-    function createKombiIcon() {
-      return L.divIcon({
-        className: 'custom-kombi-icon',
-        html: `
-          <div style="background-color: #10B981; border: 2px solid #FFFFFF; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);">
-            <div style="background-color: white; width: 8px; height: 8px; border-radius: 50%;"></div>
-          </div>
-        `,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
+      ranks.forEach(r => {
+        L.circle([r.lat, r.lng], { color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.15, radius: 150 }).addTo(map);
+        L.marker([r.lat, r.lng]).addTo(map).bindPopup(`<b>${r.name}</b><br>Municipal Rank Zone`);
       });
     }
 
-    // Helper: Log event to Feed
-    function addFeedLog(message) {
-      const feed = document.getElementById('event-feed');
-      // Clear initial placeholder text
-      if (feed.querySelector('.italic')) {
-        feed.innerHTML = '';
-      }
-      
-      const timeStr = new Date().toLocaleTimeString();
-      const logItem = document.createElement('div');
-      logItem.className = 'bg-gray-800/80 p-2 rounded border border-gray-700/50 text-gray-300';
-      logItem.innerHTML = `<span class="text-emerald-400 font-bold">[${timeStr}]</span> ${message}`;
-      
-      feed.prepend(logItem);
-      
-      // Limit feed to last 20 messages
-      if (feed.children.length > 20) {
-        feed.removeChild(feed.lastChild);
-      }
-    }
+    async function loginAdmin() {
+      const user = document.getElementById('admin-user').value;
+      const pass = document.getElementById('admin-pass').value;
+      const err = document.getElementById('admin-error');
 
-    // Helper: Update Marker Location & Stats
-    function updateVehicleOnMap(data) {
-      const { registration_number, latitude, longitude, speed } = data;
-      const lat = parseFloat(latitude);
-      const lng = parseFloat(longitude);
-
-      if (isNaN(lat) || isNaN(lng)) return;
-
-      const popupContent = `
-        <div style="color: #111827; font-sans">
-          <strong style="font-size: 14px;">🚍 Kombi: ${registration_number}</strong><br>
-          <span style="font-size: 12px; color: #4B5563;">Speed: ${speed || 0} km/h</span>
-        </div>
-      `;
-
-      if (vehicleMarkers[registration_number]) {
-        // Move existing marker smoothly
-        vehicleMarkers[registration_number].setLatLng([lat, lng]);
-        vehicleMarkers[registration_number].getPopup().setContent(popupContent);
-      } else {
-        // Create new marker
-        vehicleMarkers[registration_number] = L.marker([lat, lng], { icon: createKombiIcon() })
-          .addTo(map)
-          .bindPopup(popupContent);
-          
-        addFeedLog(`New vehicle connected: <span class="text-white font-semibold">${registration_number}</span>`);
-      }
-
-      // Update vehicle counter UI
-      const countElement = document.getElementById('live-vehicle-count');
-      if (countElement) {
-        countElement.innerText = Object.keys(vehicleMarkers).length;
-      }
-    }
-
-    // 3. Initial Fetch on Page Load
-    async function fetchActiveVehicles() {
       try {
-        const response = await fetch('/api/v1/vehicles');
-        if (response.ok) {
-          const vehicles = await response.json();
-          vehicles.forEach(vehicle => updateVehicleOnMap(vehicle));
+        const res = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.role === 'admin') {
+          document.getElementById('login-modal').classList.add('hidden');
+          initMap();
+          initSockets();
+          fetchActiveFleet();
+        } else {
+          err.innerText = 'Unauthorized admin credentials.';
+          err.classList.remove('hidden');
         }
-      } catch (err) {
-        console.warn('Initial vehicle fetch error:', err);
+      } catch (e) {
+        err.innerText = 'Connection error.';
+        err.classList.remove('hidden');
       }
     }
 
-    // Run fetch on load
-    fetchActiveVehicles();
+    async function registerVehicle() {
+      const plate = document.getElementById('reg-plate').value.trim();
+      const pin = document.getElementById('reg-pin').value.trim();
+      const status = document.getElementById('reg-status');
 
-    // 4. Initialize Socket.IO connection
-    const socket = io();
+      if (!plate || !pin) return;
 
-    socket.on('connect', () => {
-      console.log('Connected to real-time tracker socket server.');
-      document.getElementById('server-status').innerText = 'Server Online';
-    });
-    
+      try {
+        const res = await fetch('/api/v1/admin/register-vehicle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registration_number: plate, pin, capacity: 18 })
+        });
+        const data = await res.json();
 
-socket.on('vehicle_offline', (data) => {
-  const reg = data.registration_number;
-  
-  if (vehicleMarkers[reg]) {
-    map.removeLayer(vehicleMarkers[reg]); // Remove marker from map
-    delete vehicleMarkers[reg];
-    delete vehiclesData[reg];
-    
-    // Log disconnect to event feed
-    logEvent(`Vehicle disconnected/offline: ${reg}`);
-    
-    // Update live count badge
-    updateVehicleCount();
-  }
-});
+        status.classList.remove('hidden');
+        if (res.ok) {
+          status.className = 'text-[11px] text-emerald-400 font-bold';
+          status.innerText = `Registered ${plate} (PIN: ${pin})`;
+        } else {
+          status.className = 'text-[11px] text-rose-400 font-bold';
+          status.innerText = data.error || 'Failed to register';
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
 
-    socket.on('disconnect', () => {
-      document.getElementById('server-status').innerText = 'Disconnected';
-      document.getElementById('server-status').className = 'bg-rose-600/20 text-rose-400 border border-rose-500/30 px-3 py-1 rounded-md text-sm font-semibold';
-    });
+    function initSockets() {
+      socket = io();
+      socket.on('location_update', (data) => {
+        updateVehicleOnMap(data);
+      });
+    }
 
-    // Listen for live location updates from simulator
-    socket.on('location_update', (data) => {
-      console.log('Live location update:', data);
-      updateVehicleOnMap(data);
-      addFeedLog(`Update from <span class="text-white font-semibold">${data.registration_number}</span> (${data.speed || 0} km/h)`);
-    });
+    async function fetchActiveFleet() {
+      try {
+        const res = await fetch('/api/v1/vehicles');
+        const data = await res.json();
+        data.vehicles.forEach(updateVehicleOnMap);
+      } catch (e) { console.error(e); }
+    }
+
+    function updateVehicleOnMap(v) {
+      document.getElementById('fleet-count').innerText = Object.keys(markers).length + 1;
+
+      if (markers[v.registration_number]) {
+        markers[v.registration_number].setLatLng([v.latitude, v.longitude]);
+      } else {
+        const marker = L.marker([v.latitude, v.longitude]).addTo(map)
+          .bindPopup(`<b>${v.registration_number}</b><br>Speed: ${v.speed} km/h`);
+        markers[v.registration_number] = marker;
+      }
+    }
   </script>
 </body>
 </html>
