@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City of Harare - Admin Operations Dashboard</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; }
+        
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.95);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .login-card {
+            background: #1e293b; padding: 35px; border-radius: 12px;
+            border: 1px solid #38bdf8; width: 100%; max-width: 380px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center;
+        }
+        .badge {
+            background: rgba(234, 88, 12, 0.2); color: #ea580c;
+            font-size: 0.75rem; font-weight: bold; padding: 4px 10px;
+            border-radius: 12px; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .login-card h2 { color: #ffffff; margin: 15px 0 5px 0; font-size: 1.5rem; }
+        .login-card p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 25px; }
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 5px; }
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 12px; background: #0f172a;
+            border: 1px solid #334155; color: #ffffff; border-radius: 6px;
+            font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+        }
+        input[readonly] { background: #1e293b; color: #94a3b8; cursor: not-allowed; }
+        input:focus:not([readonly]) { border-color: #38bdf8; }
+        
+        .btn-submit {
+            width: 100%; padding: 12px; background: #ea580c; color: #ffffff;
+            border: none; border-radius: 6px; font-weight: bold; font-size: 1rem;
+            cursor: pointer; margin-top: 10px; transition: background 0.2s;
+        }
+        .btn-submit:hover { background: #c2410c; }
+        .error-msg { color: #f87171; font-size: 0.85rem; margin-top: 15px; display: block; min-height: 20px; }
+
+        /* Dashboard Container */
+        .dashboard-container { max-width: 1100px; margin: 0 auto; display: none; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 15px; margin-bottom: 25px; }
+        .header h1 { color: #38bdf8; margin: 0; font-size: 1.6rem; }
+        
+        .panel { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .panel h3 { margin-top: 0; color: #f8fafc; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .inline-form { display: flex; gap: 10px; align-items: center; }
+        .inline-form input { width: auto; flex: 1; }
+        .status-msg { margin-top: 10px; font-size: 0.9rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- Authentication Overlay -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="login-card">
+            <span class="badge">RESTRICT ACCESS</span>
+            <h2>Administrator Login</h2>
+            <p>City of Harare Central Operations</p>
+
+            <form id="loginForm" autocomplete="off">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" value="admin" readonly tabindex="-1">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" name="admin_pass_field" placeholder="Enter password" autocomplete="new-password" required>
+                </div>
+                <button type="submit" class="btn-submit">Authenticate Dashboard</button>
+            </form>
+            <span id="errorMessage" class="error-msg"></span>
+        </div>
+    </div>
+
+    <!-- Main Protected Dashboard -->
+    <div id="dashboardContent" class="dashboard-container">
+        <div class="header">
+            <h1>City of Harare CBD Fleet Control</h1>
+            <span style="color: #4ade80;">System Active</span>
+        </div>
+
+        <div class="panel">
+            <h3>+ Register Vehicle & Driver Access PIN</h3>
+            <form id="registerForm" class="inline-form" autocomplete="off">
+                <input type="text" id="regPlate" placeholder="Plate (e.g. AEB-9021)" required>
+                <input type="text" id="regPin" placeholder="Driver Access PIN (e.g. 1234)" required>
+                <button type="submit" class="btn-submit" style="width: auto; margin-top: 0; padding: 12px 24px;">Save & Generate PIN</button>
+            </form>
+            <div id="regStatus" class="status-msg"></div>
+        </div>
+
+        <div class="panel">
+            <h3>Live Fleet Telemetry Stream</h3>
+            <div id="telemetryData" style="color: #94a3b8; font-style: italic;">Waiting for vehicle telemetry updates...</div>
+        </div>
+    </div>
+
+    <script>
+        // Ensure password field is blank on load
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('password').value = '';
+        });
+
+        // Admin Authentication Request
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errSpan = document.getElementById('errorMessage');
+            errSpan.innerText = '';
+
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    document.getElementById('loginModal').style.display = 'none';
+                    document.getElementById('dashboardContent').style.display = 'block';
+                } else {
+                    errSpan.innerText = data.message || 'Invalid admin credentials.';
+                }
+            } catch (err) {
+                errSpan.innerText = 'Connection error. Check server logs.';
+            }
+        });
+
+        // Vehicle Registration Request
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('regStatus');
+            statusDiv.innerText = '';
+
+            try {
+                const response = await fetch('/api/admin/register-vehicle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        plate: document.getElementById('regPlate').value,
+                        pin: document.getElementById('regPin').value
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    statusDiv.style.color = '#4ade80';
+                    statusDiv.innerText = data.message;
+                    document.getElementById('regPlate').value = '';
+                    document.getElementById('regPin').value = '';
+                } else {
+                    statusDiv.style.color = '#f87171';
+                    statusDiv.innerText = data.message || 'Registration failed.';
+                }
+            } catch (err) {
+                statusDiv.style.color = '#f87171';
+                statusDiv.innerText = 'Error registering vehicle.';
+            }
+        });
+    </script>
+</body>
+</html>
