@@ -2,38 +2,290 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>City of Harare - Transit Tracker Central Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City of Harare - Transit Portal</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0f19; color: #f8fafc; margin: 0; padding: 40px; }
-        .container { max-width: 900px; margin: 0 auto; text-align: center; }
-        h1 { color: #38bdf8; margin-bottom: 10px; }
-        p { color: #94a3b8; font-size: 1.1rem; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 40px; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 30px; text-decoration: none; color: white; transition: transform 0.2s, border-color 0.2s; }
-        .card:hover { transform: translateY(-5px); border-color: #38bdf8; }
-        .card h3 { color: #38bdf8; margin-top: 0; }
-        .card p { font-size: 0.9rem; color: #cbd5e1; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        
+        body {
+            background-color: #080c14;
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Subtle Dynamic Background Elements */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, rgba(0,0,0,0) 70%);
+            top: -100px;
+            left: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(234, 88, 12, 0.06) 0%, rgba(0,0,0,0) 70%);
+            bottom: -100px;
+            right: -100px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Container Setup */
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            padding: 40px 20px;
+            z-index: 1;
+            text-align: center;
+        }
+
+        /* Live System Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #38bdf8;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        /* Main Heading */
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 0 0 12px 0;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            color: #94a3b8;
+            font-size: 1rem;
+            max-width: 580px;
+            margin: 0 auto 50px auto;
+            line-height: 1.5;
+        }
+
+        /* Card Grid */
+        .portal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            justify-content: center;
+        }
+
+        /* Base Card Styling */
+        .portal-card {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 30px 24px;
+            text-align: left;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .portal-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        /* Card Specific Color Themes */
+        .card-admin::before { background: linear-gradient(90deg, #ea580c, #f97316); }
+        .card-officer::before { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+        .card-driver::before { background: linear-gradient(90deg, #16a34a, #4ade80); }
+
+        .portal-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 30px -10px rgba(0,0,0,0.6);
+            background: rgba(30, 41, 59, 0.75);
+        }
+
+        .card-admin:hover { border-color: rgba(234, 88, 12, 0.4); box-shadow: 0 12px 28px -10px rgba(234, 88, 12, 0.25); }
+        .card-officer:hover { border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 12px 28px -10px rgba(56, 189, 248, 0.25); }
+        .card-driver:hover { border-color: rgba(74, 222, 128, 0.4); box-shadow: 0 12px 28px -10px rgba(74, 222, 128, 0.25); }
+
+        /* Icon Container */
+        .icon-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .card-admin .icon-box { background: rgba(234, 88, 12, 0.15); color: #f97316; }
+        .card-officer .icon-box { background: rgba(2, 132, 199, 0.15); color: #38bdf8; }
+        .card-driver .icon-box { background: rgba(22, 163, 74, 0.15); color: #4ade80; }
+
+        .icon-box svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* Typography inside cards */
+        .portal-card h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            color: #ffffff;
+        }
+
+        .portal-card p {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin: 0 0 25px 0;
+            flex-grow: 1;
+        }
+
+        /* Action Link Button Styling */
+        .card-action {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: gap 0.2s;
+        }
+
+        .card-admin .card-action { color: #f97316; }
+        .card-officer .card-action { color: #38bdf8; }
+        .card-driver .card-action { color: #4ade80; }
+
+        .portal-card:hover .card-action {
+            gap: 12px;
+        }
+
+        .card-action svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+        /* Footer Accent */
+        .footer {
+            margin-top: 60px;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h1>City of Harare CBD Fleet Tracking Portal</h1>
-        <p>Select a system dashboard below to authenticate and access platform functions.</p>
         
-        <div class="grid">
-            <a href="/index.html" class="card">
-                <h3>Admin Dashboard</h3>
-                <p>Register vehicles, assign driver PINs, and monitor real-time CBD fleet operations.</p>
-            </a>
-            <a href="/enforcement.html" class="card">
-                <h3>Enforcement Portal</h3>
-                <p>Perform license plate verification, check compliance status, and view audit history.</p>
-            </a>
-            <a href="/driver.html" class="card">
-                <h3>Driver Portal</h3>
-                <p>Login with assigned vehicle PIN and stream real-time GPS coordinates to central server.</p>
-            </a>
+        <!-- Live Indicator -->
+        <div class="status-badge">
+            <div class="pulse-dot"></div>
+            CITY OF HARARE TRANSIT NETWORK ACTIVE
         </div>
+
+        <!-- Main Title -->
+        <h1>CBD Public Transport Management</h1>
+        <p class="subtitle">Select your authorization endpoint below to log into operational modules, process compliance audits, or stream driver GPS telemetry.</p>
+
+        <!-- Navigation Cards Grid -->
+        <div class="portal-grid">
+
+            <!-- Card 1: Admin -->
+            <a href="/index.html" class="portal-card card-admin">
+                <div>
+                    <div class="icon-box">
+                        <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+                    </div>
+                    <h2>Admin Operations</h2>
+                    <p>Register fleet vehicles, issue secure driver PINs, and monitor real-time spatial positioning across central Harare.</p>
+                </div>
+                <div class="card-action">
+                    <span>Access Operations</span>
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+            </a>
+
+            <!-- Card 2: Officer -->
+            <a href="/enforcement.html" class="portal-card card-officer">
+                <div>
+                    <div class="icon-box">
+                        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                    </div>
+                    <h2>Traffic Enforcement</h2>
+                    <p>Conduct field license plate lookups, audit commuter permits, and detect unverified or non-compliant operators.</p>
+                </div>
+                <div class="card-action">
+                    <span>Launch Enforcement</span>
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+            </a>
+
+            <!-- Card 3: Driver -->
+            <a href="/driver.html" class="portal-card card-driver">
+                <div>
+                    <div class="icon-box">
+                        <svg viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-1-.7-1.9-1.7-2l-2.2-.4c-.4-.1-.8-.4-1-.8l-1.4-2.7c-.4-.7-1.1-1.1-1.9-1.1H8.2c-.8 0-1.5.4-1.9 1.1L4.9 9.8c-.2.4-.6.7-1 .8L1.7 11C.7 11.1 0 12 0 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                    </div>
+                    <h2>Driver Terminal</h2>
+                    <p>Authenticate vehicle using assigned PIN credentials and initiate automatic live GPS coordinate transmission.</p>
+                </div>
+                <div class="card-action">
+                    <span>Open Terminal</span>
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+            </a>
+
+        </div>
+
+        <div class="footer">
+            Harare Municipal Metropolitan Authority &copy; 2026 Telematics System
+        </div>
+
     </div>
+
 </body>
 </html>
