@@ -61,6 +61,52 @@
         .inline-form input { width: auto; flex: 1; }
         .status-msg { margin-top: 10px; font-size: 0.9rem; font-weight: bold; }
 
+        /* Active Fleet Monitor Header Bar */
+        .active-vehicles-summary {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .counter-badge {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid #22c55e;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .plate-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .plate-tag {
+            background: #1e293b;
+            border: 1px solid #38bdf8;
+            color: #38bdf8;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .plate-tag span.speed {
+            color: #94a3b8;
+            font-size: 0.75rem;
+            font-weight: normal;
+        }
+
         /* Map Styling */
         #cbdMap {
             height: 480px;
@@ -82,7 +128,7 @@
         .dot-rank { background: #0284c7; box-shadow: 0 0 6px #38bdf8; }
         .dot-vehicle { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
 
-        /* Custom Leaflet Map Popup Styling */
+        /* Leaflet Map Popup Styling */
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
             background: #0f172a !important;
             color: #f8fafc !important;
@@ -132,9 +178,21 @@
             <div id="regStatus" class="status-msg"></div>
         </div>
 
-        <!-- Interactive Map Panel -->
+        <!-- Interactive Map & Active Vehicle Section -->
         <div class="panel">
             <h3>Harare CBD Live Telemetry & Legal Bus/Kombi Ranks</h3>
+
+            <!-- Active Vehicles Monitor Section -->
+            <div class="active-vehicles-summary">
+                <div class="summary-header">
+                    <strong style="color: #f8fafc; font-size: 0.95rem;">Active Fleet Tracking Monitor</strong>
+                    <span id="activeCountBadge" class="counter-badge">Active Vehicles Online: 0</span>
+                </div>
+                <div id="plateListContainer" class="plate-list">
+                    <span style="color: #64748b; font-size: 0.85rem; font-style: italic;">No active broadcasting vehicles currently online.</span>
+                </div>
+            </div>
+
             <div class="legend-box">
                 <div class="legend-item"><span class="dot dot-rank"></span> Legal Designated Rank</div>
                 <div class="legend-item"><span class="dot dot-vehicle"></span> Active Vehicle (Live WebSocket)</div>
@@ -167,7 +225,6 @@
         function initMap() {
             map = L.map('cbdMap').setView([-17.8292, 31.0522], 14);
 
-            // Option B: Completely Free OpenStreetMap Standard Tiles
             L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -197,6 +254,7 @@
                     const data = JSON.parse(event.data);
                     if (data.type === 'FLEET_UPDATE' && Array.isArray(data.vehicles)) {
                         updateVehicleMarkers(data.vehicles);
+                        updateActiveVehicleSection(data.vehicles);
                     }
                 } catch (e) {
                     console.error("Error parsing WebSocket telemetry stream:", e);
@@ -227,6 +285,29 @@
                     vehicleMarkers[plate] = marker;
                 }
             });
+        }
+
+        // Update Active Vehicle Counter and License Plate List above the map
+        function updateActiveVehicleSection(vehicles) {
+            const badge = document.getElementById('activeCountBadge');
+            const container = document.getElementById('plateListContainer');
+
+            badge.innerText = `Active Vehicles Online: ${vehicles.length}`;
+
+            if (vehicles.length === 0) {
+                container.innerHTML = `<span style="color: #64748b; font-size: 0.85rem; font-style: italic;">No active broadcasting vehicles currently online.</span>`;
+                return;
+            }
+
+            container.innerHTML = vehicles.map(([plate, info]) => {
+                const speedVal = info.speed !== undefined ? info.speed : 0;
+                return `
+                    <div class="plate-tag">
+                        <span>🚘 ${plate}</span>
+                        <span class="speed">(${speedVal} km/h)</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         // Admin Authentication Request
