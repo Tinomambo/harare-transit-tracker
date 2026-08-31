@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Driver Telemetry Portal - City of Harare</title>
+    <style>
+        body { font-family: sans-serif; background: #0b0f19; color: #fff; margin: 0; padding: 20px; }
+        .card { background: #1e293b; padding: 30px; border-radius: 10px; max-width: 400px; margin: 40px auto; border: 1px solid #334155; }
+        input { width: 92%; padding: 10px; margin: 8px 0; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px; }
+        button { width: 98%; padding: 12px; background: #16a34a; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .status { margin-top: 15px; font-weight: bold; color: #38bdf8; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h3>Driver Tracking Portal</h3>
+        <p style="font-size: 0.85rem; color: #94a3b8;">Enter assigned credentials to launch telemetry transmitter.</p>
+        
+        <form id="driverForm" autocomplete="off">
+            <input type="text" id="driverPlate" placeholder="Registration Plate (e.g., AEB-9021)" autocomplete="off" required>
+            <input type="password" id="driverPin" name="driver_pin_field" placeholder="4-Digit Driver PIN" autocomplete="new-password" required>
+            <button type="submit">Verify & Begin Streaming</button>
+        </form>
+        
+        <div id="streamStatus" class="status"></div>
+    </div>
+
+    <script>
+        let ws;
+        let watchId;
+
+        // Force inputs clear on load
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('driverPlate').value = '';
+            document.getElementById('driverPin').value = '';
+        });
+
+        document.getElementById('driverForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const plate = document.getElementById('driverPlate').value;
+            const pin = document.getElementById('driverPin').value;
+            const statusDiv = document.getElementById('streamStatus');
+
+            const res = await fetch('/api/driver/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plate, pin })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                statusDiv.innerText = 'Verified! Connecting WebSocket stream...';
+                
+                // Establish WebSocket Connection
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+                ws.onopen = () => {
+                    statusDiv.innerText = 'LIVE TELEMETRY BROADCASTING ACTIVE';
+                    statusDiv.style.color = '#4ade80';
+
+                    // Stream HTML5 Geolocation updates
+                    if ('geolocation' in navigator) {
+                        watchId = navigator.geolocation.watchPosition((pos) => {
+                            const payload = {
+                                type: 'TELEMETRY_UPDATE',
+                                plate: plate.toUpperCase(),
+                                lat: pos.coords.latitude,
+                                lng: pos.coords.longitude,
+                                speed: pos.coords.speed || 0
+                            };
+                            ws.send(JSON.stringify(payload));
+                        }, (err) => console.error(err), { enableHighAccuracy: true });
+                    }
+                };
+            } else {
+                statusDiv.innerText = data.message || 'Verification failed.';
+                statusDiv.style.color = '#f87171';
+            }
+        });
+    </script>
+</body>
+</html>
