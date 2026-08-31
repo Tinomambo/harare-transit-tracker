@@ -79,7 +79,7 @@
         }
         .legend-item { display: flex; align-items: center; gap: 6px; }
         .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-        .dot-rank { background: #38bdf8; box-shadow: 0 0 6px #38bdf8; }
+        .dot-rank { background: #0284c7; box-shadow: 0 0 6px #38bdf8; }
         .dot-vehicle { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
 
         /* Custom Leaflet Map Popup Styling */
@@ -163,14 +163,14 @@
             document.getElementById('password').value = '';
         });
 
-        // Initialize Map centered over Harare CBD
+        // Initialize Map centered over Harare CBD using OpenStreetMap standard tiles
         function initMap() {
             map = L.map('cbdMap').setView([-17.8292, 31.0522], 14);
 
-            // Dark Mode Tile Layer
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-                maxZoom: 19
+            // Option B: Completely Free OpenStreetMap Standard Tiles
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
             // Add Legal Rank Markers
