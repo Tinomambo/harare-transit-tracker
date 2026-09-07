@@ -13,7 +13,6 @@ const VEHICLES_FILE = path.join(__dirname, 'vehicles.json');
 
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // In-Memory Live Tracking State
 // Key: Plate Number (String), Value: { lat, lng, speed, timestamp }
@@ -49,16 +48,56 @@ function saveVehicles(vehicles) {
 let registeredVehicles = loadVehicles();
 
 
+// --- PAGE ROUTING ---
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/driver', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'driver.html'));
+});
+
+app.get('/enforcement', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'enforcement.html'));
+});
+
+// Serve Static Assets
+app.use(express.static(path.join(__dirname, 'public')));
+
+
 // --- REST API ENDPOINTS ---
 
 // Admin Authentication Endpoint
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
 
-    if (username === 'admin' && password === 'admin123') { // Replace with preferred admin credentials
+    const cleanUser = username ? username.trim() : '';
+    const cleanPass = password ? password.trim() : '';
+
+    if (cleanUser === 'admin' && cleanPass === 'April2005') {
         return res.json({ success: true, message: 'Authentication successful.' });
     }
+    
     return res.status(401).json({ success: false, message: 'Invalid admin credentials.' });
+});
+
+// Enforcement Authentication Endpoint
+app.post('/api/enforcement/login', (req, res) => {
+    const { username, password } = req.body;
+
+    const cleanUser = username ? username.trim() : '';
+    const cleanPass = password ? password.trim() : '';
+
+    if ((cleanUser === 'officer' || cleanUser === 'admin') && cleanPass === 'April2005') {
+        return res.json({ success: true, message: 'Enforcement authentication successful.' });
+    }
+
+    return res.status(401).json({ success: false, message: 'Invalid enforcement credentials.' });
 });
 
 // Admin Register Vehicle Endpoint
@@ -117,7 +156,7 @@ app.post('/api/driver/verify', (req, res) => {
 
 // --- WEBSOCKET BROADCASTING LOGIC ---
 
-// Helper function to broadcast active vehicles payload to all connected clients
+// Broadcast active vehicles payload to all connected clients
 function broadcastFleetData() {
     const fleetPayload = JSON.stringify({
         type: 'FLEET_UPDATE',
@@ -131,13 +170,13 @@ function broadcastFleetData() {
     });
 }
 
-// Clean up inactive vehicles (e.g., if a driver drops signal for over 2 minutes without logging off)
+// Clean up inactive vehicles (2 minutes inactive timeout)
 setInterval(() => {
     const now = Date.now();
     let updated = false;
 
     for (const [plate, info] of activeVehicles.entries()) {
-        if (now - info.timestamp > 120000) { // 2 minutes timeout
+        if (now - info.timestamp > 120000) {
             activeVehicles.delete(plate);
             updated = true;
             console.log(`[TIMEOUT]: Vehicle ${plate} removed due to inactivity.`);
@@ -149,9 +188,9 @@ setInterval(() => {
     }
 }, 30000);
 
-// WebSocket Connection Connection Handling
+// WebSocket Connection Handling
 wss.on('connection', (ws) => {
-    // Send current active fleet immediately to newly connected client
+    // Send current active fleet immediately upon client connection
     ws.send(JSON.stringify({
         type: 'FLEET_UPDATE',
         vehicles: Array.from(activeVehicles.entries())
@@ -161,7 +200,7 @@ wss.on('connection', (ws) => {
         try {
             const data = JSON.parse(message);
 
-            // Handle Driver Live Location Stream
+            // Live Location Transmission
             if (data.type === 'DRIVER_TELEMETRY' && data.plate) {
                 const formattedPlate = data.plate.trim().toUpperCase();
 
@@ -175,7 +214,7 @@ wss.on('connection', (ws) => {
                 broadcastFleetData();
             }
 
-            // Handle Driver Manual Log Off / Offboarding Signal
+            // Driver Log Off Transmission
             if (data.type === 'DRIVER_OFFLINE' && data.plate) {
                 const formattedPlate = data.plate.trim().toUpperCase();
                 
