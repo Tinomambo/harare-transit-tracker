@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City of Harare - Municipal Enforcement Portal</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; }
+        
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 15, 25, 0.95);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .login-card {
+            background: #1e293b; padding: 35px; border-radius: 12px;
+            border: 1px solid #0284c7; width: 100%; max-width: 380px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center;
+        }
+        .badge {
+            background: rgba(2, 132, 199, 0.2); color: #38bdf8;
+            font-size: 0.75rem; font-weight: bold; padding: 4px 10px;
+            border-radius: 12px; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .login-card h2 { color: #ffffff; margin: 15px 0 5px 0; font-size: 1.5rem; }
+        .login-card p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 25px; }
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 5px; }
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 12px; background: #0f172a;
+            border: 1px solid #334155; color: #ffffff; border-radius: 6px;
+            font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+        }
+        input[readonly] { background: #1e293b; color: #94a3b8; cursor: not-allowed; }
+        input:focus:not([readonly]) { border-color: #0284c7; }
+        
+        .btn-submit {
+            width: 100%; padding: 12px; background: #0284c7; color: #ffffff;
+            border: none; border-radius: 6px; font-weight: bold; font-size: 1rem;
+            cursor: pointer; margin-top: 10px; transition: background 0.2s;
+        }
+        .btn-submit:hover { background: #0369a1; }
+        .error-msg { color: #f87171; font-size: 0.85rem; margin-top: 15px; display: block; min-height: 20px; }
+
+        /* Dashboard Layout */
+        .dashboard-container { max-width: 900px; margin: 0 auto; display: none; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 15px; margin-bottom: 25px; }
+        .header h1 { color: #38bdf8; margin: 0; font-size: 1.6rem; }
+
+        .panel { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 25px; margin-bottom: 20px; }
+        .search-box { display: flex; gap: 10px; margin-top: 15px; }
+        .search-box input { flex: 1; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Compliance Card Statuses */
+        .result-card { margin-top: 25px; padding: 20px; border-radius: 8px; font-size: 1rem; display: none; }
+        .status-green { background: rgba(6, 95, 70, 0.4); border: 1px solid #34d399; color: #a7f3d0; }
+        .status-red { background: rgba(153, 27, 27, 0.4); border: 1px solid #f87171; color: #fecaca; }
+        .result-card h4 { margin: 0 0 10px 0; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <!-- Authentication Overlay -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="login-card">
+            <span class="badge">FIELD VERIFICATION</span>
+            <h2>Municipal Officer Login</h2>
+            <p>Traffic Enforcement Operations</p>
+
+            <form id="officerLoginForm" autocomplete="off">
+                <div class="form-group">
+                    <label>Officer ID / Username</label>
+                    <input type="text" id="officerUsername" value="officer" readonly tabindex="-1">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="officerPassword" name="officer_pass_field" placeholder="Enter password" autocomplete="new-password" required>
+                </div>
+                <button type="submit" class="btn-submit">Access Verification Portal</button>
+            </form>
+            <span id="errorMessage" class="error-msg"></span>
+        </div>
+    </div>
+
+    <!-- Main Protected Portal -->
+    <div id="enforcementContent" class="dashboard-container">
+        <div class="header">
+            <h1>Enforcement Verification Workflow</h1>
+            <span style="color: #38bdf8;">Process 4.0 Active</span>
+        </div>
+
+        <div class="panel">
+            <h3>License Plate Verification Search</h3>
+            <p style="color: #94a3b8; font-size: 0.9rem;">Query vehicle permit status and live session telemetry within the CBD perimeter.</p>
+
+            <form id="searchForm" class="search-box" autocomplete="off">
+                <input type="text" id="searchPlate" placeholder="ENTER PLATE (E.G. AEB-9021)" required>
+                <button type="submit" class="btn-submit" style="width: auto; margin-top: 0; padding: 0 30px;">Verify Plate</button>
+            </form>
+
+            <div id="resultCard" class="result-card">
+                <h4 id="resultTitle"></h4>
+                <div id="resultDetails"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Ensure password field is blank on load
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('officerPassword').value = '';
+        });
+
+        // Officer Authentication Request
+        document.getElementById('officerLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errSpan = document.getElementById('errorMessage');
+            errSpan.innerText = '';
+
+            try {
+                const response = await fetch('/api/officer/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('officerUsername').value,
+                        password: document.getElementById('officerPassword').value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    document.getElementById('loginModal').style.display = 'none';
+                    document.getElementById('enforcementContent').style.display = 'block';
+                } else {
+                    errSpan.innerText = data.message || 'Invalid officer credentials.';
+                }
+            } catch (err) {
+                errSpan.innerText = 'Connection error. Check server status.';
+            }
+        });
+
+        // License Plate Lookup Request
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const plate = document.getElementById('searchPlate').value;
+            const card = document.getElementById('resultCard');
+            const title = document.getElementById('resultTitle');
+            const details = document.getElementById('resultDetails');
+
+            try {
+                const response = await fetch('/api/enforcement/verify-plate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plate })
+                });
+
+                const data = await response.json();
+                card.style.display = 'block';
+
+                if (data.isRegistered && data.isBroadcasting) {
+                    card.className = 'result-card status-green';
+                    title.innerText = 'PERMITTED OPERATOR';
+                    details.innerHTML = `<strong>Registration Plate:</strong> ${data.plate}<br/><strong>Permit State:</strong> Active / Verified<br/><strong>Telemetry Stream:</strong> Live WebSocket Active`;
+                } else {
+                    card.className = 'result-card status-red';
+                    title.innerText = 'UNREGISTERED / NON-COMPLIANT (MSHIKA-SHIKA)';
+                    details.innerHTML = `<strong>Registration Plate:</strong> ${data.plate}<br/><strong>Permit Registered:</strong> ${data.isRegistered ? 'YES' : 'NO'}<br/><strong>Telemetry Transmitting:</strong> ${data.isBroadcasting ? 'YES' : 'NO'}`;
+                }
+            } catch (err) {
+                card.style.display = 'block';
+                card.className = 'result-card status-red';
+                title.innerText = 'SEARCH ERROR';
+                details.innerText = 'Could not process query against telemetry engine.';
+            }
+        });
+    </script>
+</body>
+</html>

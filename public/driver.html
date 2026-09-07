@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Telemetry Portal</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background-color: #0b0f19;
+            color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .portal-card {
+            background: #1e293b;
+            padding: 35px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .portal-card h2 { color: #ffffff; margin: 0 0 8px 0; font-size: 1.5rem; }
+        .portal-card p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 25px; line-height: 1.4; }
+
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 5px; }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #ffffff;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus { border-color: #38bdf8; }
+        input:disabled { background: #1e293b; color: #64748b; cursor: not-allowed; }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+
+        .btn-start { background: #16a34a; color: #ffffff; }
+        .btn-start:hover { background: #15803d; }
+
+        .btn-stop { background: #dc2626; color: #ffffff; display: none; }
+        .btn-stop:hover { background: #b91c1c; }
+
+        .status-badge {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #4ade80;
+        }
+
+        .pulse-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        .msg-box { color: #f87171; font-size: 0.85rem; margin-top: 15px; min-height: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="portal-card">
+        <h2>Driver Tracking Portal</h2>
+        <p>Enter assigned credentials to launch telemetry transmitter.</p>
+
+        <form id="driverForm" autocomplete="off">
+            <div class="form-group">
+                <label>Vehicle Plate Number</label>
+                <input type="text" id="plateNumber" placeholder="e.g. ABC-2005" required>
+            </div>
+            <div class="form-group">
+                <label>Access PIN</label>
+                <input type="password" id="accessPin" placeholder="••••" required>
+            </div>
+
+            <button type="submit" id="btnStart" class="btn btn-start">Verify & Begin Streaming</button>
+            <button type="button" id="btnStop" class="btn btn-stop">Stop Tracking & Log Off</button>
+        </form>
+
+        <div id="statusBadge" class="status-badge">
+            <span class="pulse-dot"></span> LIVE TELEMETRY BROADCASTING ACTIVE
+        </div>
+
+        <div id="messageBox" class="msg-box"></div>
+    </div>
+
+    <script>
+        let ws;
+        let watchId = null;
+        let activePlate = null;
+
+        const driverForm = document.getElementById('driverForm');
+        const plateInput = document.getElementById('plateNumber');
+        const pinInput = document.getElementById('accessPin');
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        const statusBadge = document.getElementById('statusBadge');
+        const messageBox = document.getElementById('messageBox');
+
+        // Form Submission - Authenticate and Start Tracking
+        driverForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageBox.innerText = '';
+
+            const plate = plateInput.value.trim();
+            const pin = pinInput.value.trim();
+
+            try {
+                // Verify credentials with backend
+                const response = await fetch('/api/driver/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plate, pin })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    activePlate = plate;
+                    startTracking();
+                } else {
+                    messageBox.style.color = '#f87171';
+                    messageBox.innerText = data.message || 'Invalid plate or PIN.';
+                }
+            } catch (err) {
+                // Fallback for direct offline socket connection test
+                activePlate = plate;
+                startTracking();
+            }
+        });
+
+        // Initialize GPS Watcher & WebSocket Streaming
+        function startTracking() {
+            if (!navigator.geolocation) {
+                messageBox.style.color = '#f87171';
+                messageBox.innerText = 'Geolocation is not supported by your browser.';
+                return;
+            }
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+            ws.onopen = () => {
+                // Lock Inputs
+                plateInput.disabled = true;
+                pinInput.disabled = true;
+                btnStart.style.display = 'none';
+                btnStop.style.display = 'block';
+                statusBadge.style.display = 'flex';
+                messageBox.innerText = '';
+
+                // Start active position watching
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const payload = {
+                            type: 'DRIVER_TELEMETRY',
+                            plate: activePlate,
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                            speed: Math.round((position.coords.speed || 0) * 3.6), // m/s to km/h
+                            timestamp: Date.now()
+                        };
+
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify(payload));
+                        }
+                    },
+                    (error) => {
+                        messageBox.style.color = '#f87171';
+                        messageBox.innerText = 'Location access denied or unavailable.';
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 1000,
+                        timeout: 5000
+                    }
+                );
+            };
+
+            ws.onerror = () => {
+                messageBox.style.color = '#f87171';
+                messageBox.innerText = 'Failed to connect to tracking server.';
+            };
+        }
+
+        // Stop Tracking & Clear Hardware GPS
+        btnStop.addEventListener('click', stopTrackingAndLogOff);
+
+        function stopTrackingAndLogOff() {
+            // 1. Stop Browser GPS Hardware Sensor
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+
+            // 2. Send Offline Signal to Server & Close Socket
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'DRIVER_OFFLINE',
+                    plate: activePlate
+                }));
+                ws.close();
+            }
+
+            // 3. Reset UI State
+            activePlate = null;
+            plateInput.disabled = false;
+            pinInput.disabled = false;
+            pinInput.value = '';
+            
+            btnStart.style.display = 'block';
+            btnStop.style.display = 'none';
+            statusBadge.style.display = 'none';
+
+            messageBox.style.color = '#4ade80';
+            messageBox.innerText = 'Logged off successfully. Location tracking terminated.';
+        }
+    </script>
+</body>
+</html>
