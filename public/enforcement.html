@@ -83,16 +83,74 @@
             min-height: 20px;
         }
 
-        /* Dashboard Container Hidden by Default */
+        /* DASHBOARD INTERFACE */
         #dashboardContent {
             display: none;
             width: 100%;
-            max-width: 800px;
+            max-width: 600px;
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
-            padding: 25px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            margin-bottom: 25px;
+        }
+
+        .search-box input {
+            flex: 1;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .search-box button {
+            padding: 12px 24px;
+            background: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-box button:hover { background: #0369a1; }
+
+        .result-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            display: none;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .status-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
+        .status-inactive { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #1e293b;
+            font-size: 0.9rem;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: #94a3b8; }
+        .data-value { color: #ffffff; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -120,10 +178,37 @@
 
     <!-- DASHBOARD CONTAINER -->
     <div id="dashboardContent">
-        <h2 style="text-align: left; color: #38bdf8;">Enforcement Dashboard</h2>
-        <p style="color: #94a3b8;">Active field inspection and fleet verification terminal.</p>
-        <hr style="border-color: #334155; margin: 20px 0;">
-        <p style="color: #4ade80;">Authenticated successfully. Enforcement status active.</p>
+        <h2 style="text-align: left; color: #38bdf8; margin: 0;">Vehicle Verification Terminal</h2>
+        <p style="color: #94a3b8; margin-top: 5px; font-size: 0.9rem;">Verify license plates and live telemetry status within CBD zones.</p>
+        
+        <div class="search-box">
+            <input type="text" id="plateSearch" placeholder="e.g. AAE 1234" autocomplete="off">
+            <button type="button" id="btnVerify">Verify Plate</button>
+        </div>
+
+        <div id="resultCard" class="result-card">
+            <div id="statusBadge" class="status-pill"></div>
+            <div class="data-row">
+                <span class="data-label">Target Plate:</span>
+                <span id="resPlate" class="data-value">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Telemetry Status:</span>
+                <span id="resTelemetry" class="data-value">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Current Speed:</span>
+                <span id="resSpeed" class="data-value">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Coordinates:</span>
+                <span id="resCoords" class="data-value">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Last Transmission:</span>
+                <span id="resTime" class="data-value">---</span>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -132,6 +217,14 @@
         const loginContainer = document.getElementById('loginContainer');
         const dashboardContent = document.getElementById('dashboardContent');
 
+        const plateSearch = document.getElementById('plateSearch');
+        const btnVerify = document.getElementById('btnVerify');
+        const resultCard = document.getElementById('resultCard');
+
+        let activeFleet = new Map();
+        let ws = null;
+
+        // Login Handler
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -153,6 +246,7 @@
                 if (response.ok && data.success) {
                     loginContainer.style.display = 'none';
                     dashboardContent.style.display = 'block';
+                    initWebSocket();
                 } else {
                     messageBox.style.color = '#f87171';
                     messageBox.innerText = data.message || 'Invalid enforcement credentials.';
@@ -163,6 +257,58 @@
                 messageBox.innerText = 'Connection error. Check server status.';
             }
         });
+
+        // Initialize WebSocket to receive real-time active fleet telemetry
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'FLEET_UPDATE' && Array.isArray(data.vehicles)) {
+                        activeFleet = new Map(data.vehicles);
+                    }
+                } catch (err) {
+                    console.error('WebSocket parse error:', err);
+                }
+            };
+        }
+
+        // Verification Search Logic
+        btnVerify.addEventListener('click', performVerification);
+        plateSearch.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performVerification();
+        });
+
+        function performVerification() {
+            const query = plateSearch.value.trim().toUpperCase();
+            if (!query) return;
+
+            resultCard.style.display = 'block';
+
+            const activeData = activeFleet.get(query);
+
+            document.getElementById('resPlate').innerText = query;
+
+            if (activeData) {
+                document.getElementById('statusBadge').className = 'status-pill status-active';
+                document.getElementById('statusBadge').innerText = '● ACTIVE TELEMETRY STREAM';
+                document.getElementById('resTelemetry').innerText = 'Broadcasting Live GPS';
+                document.getElementById('resSpeed').innerText = `${Math.round(activeData.speed || 0)} km/h`;
+                document.getElementById('resCoords').innerText = `${activeData.lat.toFixed(5)}, ${activeData.lng.toFixed(5)}`;
+                
+                const lastTime = new Date(activeData.timestamp).toLocaleTimeString();
+                document.getElementById('resTime').innerText = lastTime;
+            } else {
+                document.getElementById('statusBadge').className = 'status-pill status-inactive';
+                document.getElementById('statusBadge').innerText = '▲ OFF-LINE / NO TELEMETRY';
+                document.getElementById('resTelemetry').innerText = 'No Active Signal';
+                document.getElementById('resSpeed').innerText = 'N/A';
+                document.getElementById('resCoords').innerText = 'N/A';
+                document.getElementById('resTime').innerText = 'No active transmission';
+            }
+        }
     </script>
 </body>
 </html>
