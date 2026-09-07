@@ -42,57 +42,36 @@ function saveVehicles(vehicles) {
 }
 
 // ----------------------------------------------------
-// API ENDPOINTS
+// AUTHENTICATION ENDPOINTS
 // ----------------------------------------------------
 
-// 1. Get List of Registered Vehicles (Admin / Public)
-app.get('/api/vehicles', (req, res) => {
-    const vehicles = loadVehicles();
-    res.json(vehicles);
-});
-
-// 2. Register New Vehicle (Admin Dashboard)
-app.post('/api/vehicles/register', (req, res) => {
-    const { plate } = req.body;
-    if (!plate) {
-        return res.status(400).json({ success: false, message: 'License plate required.' });
+// 1. Admin Login Endpoint
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    if (username === 'admin' && password === 'April2005') {
+        return res.json({ success: true, message: 'Admin authentication successful.' });
     }
 
-    const cleanPlate = plate.trim().toUpperCase();
-    const vehicles = loadVehicles();
-
-    if (vehicles[cleanPlate]) {
-        return res.status(400).json({ success: false, message: 'Vehicle already registered.' });
-    }
-
-    vehicles[cleanPlate] = {
-        plate: cleanPlate,
-        registeredAt: new Date().toISOString()
-    };
-
-    saveVehicles(vehicles);
-    res.json({ success: true, message: `Vehicle ${cleanPlate} registered successfully.` });
+    return res.status(401).json({ success: false, message: 'Invalid admin credentials.' });
 });
 
-// 3. Delete Vehicle (Admin Dashboard)
-app.delete('/api/vehicles/:plate', (req, res) => {
-    const cleanPlate = req.params.plate.trim().toUpperCase();
-    const vehicles = loadVehicles();
-
-    if (!vehicles[cleanPlate]) {
-        return res.status(404).json({ success: false, message: 'Vehicle not found.' });
+// 2. Municipal Officer / Enforcement Login Endpoint
+app.post('/api/enforcement/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    if (username === 'officer' && password === 'harare2026') {
+        return res.json({ success: true, message: 'Officer authentication successful.' });
     }
 
-    delete vehicles[cleanPlate];
-    activeFleet.delete(cleanPlate);
-
-    saveVehicles(vehicles);
-    broadcastFleet();
-
-    res.json({ success: true, message: `Vehicle ${cleanPlate} removed successfully.` });
+    return res.status(401).json({ success: false, message: 'Invalid enforcement credentials.' });
 });
 
-// 4. Check Vehicle Registration (Enforcement Verification Terminal)
+// ----------------------------------------------------
+// VEHICLE MANAGEMENT ENDPOINTS
+// ----------------------------------------------------
+
+// 3. Officer Search Endpoint: Check Vehicle Registration
 app.get('/api/enforcement/check-registration/:plate', (req, res) => {
     const rawPlate = req.params.plate;
     if (!rawPlate) {
@@ -117,16 +96,51 @@ app.get('/api/enforcement/check-registration/:plate', (req, res) => {
     }
 });
 
-// 5. Enforcement Login Authentication
-app.post('/api/enforcement/login', (req, res) => {
-    const { username, password } = req.body;
-    
-    // Enforcement authentication check
-    if (username === 'officer' && password === 'harare2026') {
-        return res.json({ success: true, message: 'Authentication successful.' });
+// 4. Get List of Registered Vehicles (Admin / System Dashboard)
+app.get('/api/vehicles', (req, res) => {
+    const vehicles = loadVehicles();
+    res.json(vehicles);
+});
+
+// 5. Register New Vehicle (Admin Dashboard)
+app.post('/api/vehicles/register', (req, res) => {
+    const { plate } = req.body;
+    if (!plate) {
+        return res.status(400).json({ success: false, message: 'License plate required.' });
     }
 
-    return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+    const cleanPlate = plate.trim().toUpperCase();
+    const vehicles = loadVehicles();
+
+    if (vehicles[cleanPlate]) {
+        return res.status(400).json({ success: false, message: 'Vehicle already registered.' });
+    }
+
+    vehicles[cleanPlate] = {
+        plate: cleanPlate,
+        registeredAt: new Date().toISOString()
+    };
+
+    saveVehicles(vehicles);
+    res.json({ success: true, message: `Vehicle ${cleanPlate} registered successfully.` });
+});
+
+// 6. Delete Registered Vehicle (Admin Dashboard)
+app.delete('/api/vehicles/:plate', (req, res) => {
+    const cleanPlate = req.params.plate.trim().toUpperCase();
+    const vehicles = loadVehicles();
+
+    if (!vehicles[cleanPlate]) {
+        return res.status(404).json({ success: false, message: 'Vehicle not found.' });
+    }
+
+    delete vehicles[cleanPlate];
+    activeFleet.delete(cleanPlate);
+
+    saveVehicles(vehicles);
+    broadcastFleet();
+
+    res.json({ success: true, message: `Vehicle ${cleanPlate} removed successfully.` });
 });
 
 // ----------------------------------------------------
@@ -134,7 +148,7 @@ app.post('/api/enforcement/login', (req, res) => {
 // ----------------------------------------------------
 
 wss.on('connection', (ws) => {
-    // Send full fleet state upon new client connection
+    // Send full active fleet state upon client connection
     ws.send(JSON.stringify({
         type: 'FLEET_UPDATE',
         vehicles: Array.from(activeFleet.entries())
@@ -144,7 +158,7 @@ wss.on('connection', (ws) => {
         try {
             const data = JSON.parse(message);
 
-            // Drivers streaming live telemetry
+            // Driver streaming live telemetry
             if (data.type === 'TELEMETRY_UPDATE') {
                 const { plate, lat, lng, speed } = data;
                 if (!plate) return;
@@ -167,7 +181,7 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        // Handle disconnect if tracking sessions end
+        // Disconnect handler
     });
 });
 
