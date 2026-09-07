@@ -83,7 +83,6 @@
             min-height: 20px;
         }
 
-        /* DASHBOARD INTERFACE */
         #dashboardContent {
             display: none;
             width: 100%;
@@ -130,13 +129,19 @@
             display: none;
         }
 
+        .status-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
         .status-pill {
             display: inline-block;
             padding: 6px 14px;
             border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: bold;
-            margin-bottom: 15px;
         }
         .status-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
         .status-inactive { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
@@ -144,7 +149,7 @@
         .data-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 10px 0;
             border-bottom: 1px solid #1e293b;
             font-size: 0.9rem;
         }
@@ -155,7 +160,6 @@
 </head>
 <body>
 
-    <!-- LOGIN CONTAINER -->
     <div id="loginContainer" class="login-card">
         <div style="text-align: center;"><span class="badge">Field Verification</span></div>
         <h2>Municipal Officer Login</h2>
@@ -176,21 +180,28 @@
         <div id="messageBox"></div>
     </div>
 
-    <!-- DASHBOARD CONTAINER -->
     <div id="dashboardContent">
         <h2 style="text-align: left; color: #38bdf8; margin: 0;">Vehicle Verification Terminal</h2>
-        <p style="color: #94a3b8; margin-top: 5px; font-size: 0.9rem;">Verify license plates and live telemetry status within CBD zones.</p>
+        <p style="color: #94a3b8; margin-top: 5px; font-size: 0.9rem;">Verify license plate registration and live telemetry status within CBD zones.</p>
         
         <div class="search-box">
-            <input type="text" id="plateSearch" placeholder="e.g. AAE 1234" autocomplete="off">
+            <input type="text" id="plateSearch" placeholder="e.g. ASW-9900" autocomplete="off">
             <button type="button" id="btnVerify">Verify Plate</button>
         </div>
 
         <div id="resultCard" class="result-card">
-            <div id="statusBadge" class="status-pill"></div>
+            <div class="status-container">
+                <div id="regBadge" class="status-pill"></div>
+                <div id="telemetryBadge" class="status-pill"></div>
+            </div>
+
             <div class="data-row">
                 <span class="data-label">Target Plate:</span>
                 <span id="resPlate" class="data-value">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">System Registration:</span>
+                <span id="resRegistration" class="data-value">---</span>
             </div>
             <div class="data-row">
                 <span class="data-label">Telemetry Status:</span>
@@ -258,7 +269,7 @@
             }
         });
 
-        // Initialize WebSocket to receive real-time active fleet telemetry
+        // Initialize WebSocket for Live Telemetry
         function initWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${protocol}//${window.location.host}`);
@@ -281,19 +292,38 @@
             if (e.key === 'Enter') performVerification();
         });
 
-        function performVerification() {
+        async function performVerification() {
             const query = plateSearch.value.trim().toUpperCase();
             if (!query) return;
 
             resultCard.style.display = 'block';
-
-            const activeData = activeFleet.get(query);
-
             document.getElementById('resPlate').innerText = query;
 
+            // 1. Fetch persistent registration status from Express server
+            try {
+                const regRes = await fetch(`/api/enforcement/check-registration/${encodeURIComponent(query)}`);
+                const regData = await regRes.json();
+
+                if (regData.registered) {
+                    document.getElementById('regBadge').className = 'status-pill status-active';
+                    document.getElementById('regBadge').innerText = '✓ REGISTERED VEHICLE';
+                    document.getElementById('resRegistration').innerText = 'Authorized in Database';
+                } else {
+                    document.getElementById('regBadge').className = 'status-pill status-inactive';
+                    document.getElementById('regBadge').innerText = '✕ UNREGISTERED';
+                    document.getElementById('resRegistration').innerText = 'Not Found in System';
+                }
+            } catch (err) {
+                console.error('Error fetching registration status:', err);
+                document.getElementById('resRegistration').innerText = 'Error checking database';
+            }
+
+            // 2. Check live telemetry map
+            const activeData = activeFleet.get(query);
+
             if (activeData) {
-                document.getElementById('statusBadge').className = 'status-pill status-active';
-                document.getElementById('statusBadge').innerText = '● ACTIVE TELEMETRY STREAM';
+                document.getElementById('telemetryBadge').className = 'status-pill status-active';
+                document.getElementById('telemetryBadge').innerText = '● LIVE TELEMETRY STREAM';
                 document.getElementById('resTelemetry').innerText = 'Broadcasting Live GPS';
                 document.getElementById('resSpeed').innerText = `${Math.round(activeData.speed || 0)} km/h`;
                 document.getElementById('resCoords').innerText = `${activeData.lat.toFixed(5)}, ${activeData.lng.toFixed(5)}`;
@@ -301,8 +331,8 @@
                 const lastTime = new Date(activeData.timestamp).toLocaleTimeString();
                 document.getElementById('resTime').innerText = lastTime;
             } else {
-                document.getElementById('statusBadge').className = 'status-pill status-inactive';
-                document.getElementById('statusBadge').innerText = '▲ OFF-LINE / NO TELEMETRY';
+                document.getElementById('telemetryBadge').className = 'status-pill status-inactive';
+                document.getElementById('telemetryBadge').innerText = '▲ TELEMETRY OFF-LINE';
                 document.getElementById('resTelemetry').innerText = 'No Active Signal';
                 document.getElementById('resSpeed').innerText = 'N/A';
                 document.getElementById('resCoords').innerText = 'N/A';
