@@ -13,6 +13,7 @@ const VEHICLES_FILE = path.join(__dirname, 'vehicles.json');
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // In-Memory Live Tracking State
 // Key: Plate Number (String), Value: { lat, lng, speed, timestamp }
