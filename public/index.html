@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>City of Harare - Public Transport Tracking Portal</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background-color: #0b0f19;
+            color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            color: #38bdf8;
+            font-size: 2.2rem;
+            margin: 0 0 10px 0;
+        }
+        .header p {
+            color: #94a3b8;
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        .portal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .portal-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            transition: transform 0.2s, border-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .portal-card:hover {
+            transform: translateY(-5px);
+            border-color: #38bdf8;
+        }
+
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .portal-card h3 {
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            font-size: 1.3rem;
+        }
+
+        .portal-card p {
+            color: #94a3b8;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            margin-bottom: 25px;
+        }
+
+        .btn-launch {
+            display: inline-block;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: background 0.2s;
+        }
+
+        .btn-admin { background: #ea580c; color: #ffffff; }
+        .btn-admin:hover { background: #c2410c; }
+
+        .btn-driver { background: #16a34a; color: #ffffff; }
+        .btn-driver:hover { background: #15803d; }
+
+        .btn-enforcement { background: #0284c7; color: #ffffff; }
+        .btn-enforcement:hover { background: #0369a1; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>City of Harare CBD Transit Network</h1>
+        <p>Centralized Fleet Tracking & Management System</p>
+    </div>
+
+    <div class="portal-grid">
+        <!-- Admin Dashboard Card -->
+        <div class="portal-card">
+            <div>
+                <div class="icon">🖥️</div>
+                <h3>Admin Operations</h3>
+                <p>Register vehicles, assign driver credentials, and monitor real-time fleet location telemetry on the live map.</p>
+            </div>
+            <a href="/admin.html" class="btn-launch btn-admin">Launch Admin Portal</a>
+        </div>
+
+        <!-- Driver Portal Card -->
+        <div class="portal-card">
+            <div>
+                <div class="icon">🚌</div>
+                <h3>Driver Terminal</h3>
+                <p>Log in with assigned vehicle credentials to start live GPS location broadcasting or end duty shifts.</p>
+            </div>
+            <a href="/driver.html" class="btn-launch btn-driver">Launch Driver Portal</a>
+        </div>
+
+        <!-- Enforcement Officer Card -->
+        <div class="portal-card">
+            <div>
+                <div class="icon">🛡️</div>
+                <h3>Traffic Enforcement</h3>
+                <p>Inspect active vehicles, verify designated rank compliance, and check vehicle telemetry status in the CBD.</p>
+            </div>
+            <a href="/enforcement.html" class="btn-launch btn-enforcement">Launch Enforcement Portal</a>
+        </div>
+    </div>
+
+</body>
+</html>
