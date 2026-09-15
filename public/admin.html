@@ -3,377 +3,440 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>City of Harare - Admin Operations Dashboard</title>
-
-    <!-- Leaflet OpenStreetMap CSS -->
+    <title>City of Harare CBD Fleet Control</title>
+    <!-- Leaflet Map CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; }
-        
-        /* Modal Overlay */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(11, 15, 25, 0.95);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 2000;
+        body {
+            background-color: #0b0f19;
+            color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
         }
-        .login-card {
-            background: #1e293b; padding: 35px; border-radius: 12px;
-            border: 1px solid #38bdf8; width: 100%; max-width: 380px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center;
-        }
-        .badge {
-            background: rgba(234, 88, 12, 0.2); color: #ea580c;
-            font-size: 0.75rem; font-weight: bold; padding: 4px 10px;
-            border-radius: 12px; text-transform: uppercase; letter-spacing: 1px;
-        }
-        .login-card h2 { color: #ffffff; margin: 15px 0 5px 0; font-size: 1.5rem; }
-        .login-card p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 25px; }
-        
-        .form-group { margin-bottom: 15px; text-align: left; }
-        .form-group label { display: block; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 5px; }
-        input[type="text"], input[type="password"] {
-            width: 100%; padding: 12px; background: #0f172a;
-            border: 1px solid #334155; color: #ffffff; border-radius: 6px;
-            font-size: 0.95rem; outline: none; transition: border-color 0.2s;
-        }
-        input[readonly] { background: #1e293b; color: #94a3b8; cursor: not-allowed; }
-        input:focus:not([readonly]) { border-color: #38bdf8; }
-        
-        .btn-submit {
-            width: 100%; padding: 12px; background: #ea580c; color: #ffffff;
-            border: none; border-radius: 6px; font-weight: bold; font-size: 1rem;
-            cursor: pointer; margin-top: 10px; transition: background 0.2s;
-        }
-        .btn-submit:hover { background: #c2410c; }
-        .error-msg { color: #f87171; font-size: 0.85rem; margin-top: 15px; display: block; min-height: 20px; }
 
-        /* Dashboard Layout */
-        .dashboard-container { max-width: 1200px; margin: 0 auto; display: none; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 15px; margin-bottom: 25px; }
-        .header h1 { color: #38bdf8; margin: 0; font-size: 1.6rem; }
-        
-        .panel { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-        .panel h3 { margin-top: 0; color: #f8fafc; border-bottom: 1px solid #334155; padding-bottom: 10px; }
-        .inline-form { display: flex; gap: 10px; align-items: center; }
-        .inline-form input { width: auto; flex: 1; }
-        .status-msg { margin-top: 10px; font-size: 0.9rem; font-weight: bold; }
-
-        /* Active Fleet Monitor Header Bar */
-        .active-vehicles-summary {
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-        .summary-header {
+        .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
-        }
-        .counter-badge {
-            background: rgba(34, 197, 94, 0.15);
-            color: #4ade80;
-            border: 1px solid #22c55e;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: bold;
-        }
-        .plate-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .plate-tag {
-            background: #1e293b;
-            border: 1px solid #38bdf8;
-            color: #38bdf8;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .plate-tag span.speed {
-            color: #94a3b8;
-            font-size: 0.75rem;
-            font-weight: normal;
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
         }
 
-        /* Map Styling */
-        #cbdMap {
-            height: 480px;
+        .header h1 { font-size: 1.6rem; color: #38bdf8; margin: 0; }
+        .status-badge { color: #4ade80; font-size: 0.85rem; font-weight: bold; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* LOGIN CARD */
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .login-card {
+            max-width: 400px;
+            margin: 80px auto;
+            text-align: center;
+        }
+
+        .badge-pill {
+            background: rgba(234, 88, 12, 0.2);
+            color: #f97316;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 6px; }
+        input {
+            width: 100%;
+            padding: 10px 14px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        input:focus { border-color: #f97316; }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: #ea580c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover { background: #c2410c; }
+
+        .btn-save {
+            background: #ea580c;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-save:hover { background: #c2410c; }
+
+        .register-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .msg-text { margin-top: 10px; font-size: 0.88rem; font-weight: bold; }
+
+        /* DASHBOARD GRID */
+        #dashboard { display: none; }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        #map {
+            height: 450px;
             width: 100%;
             border-radius: 8px;
             border: 1px solid #334155;
-            z-index: 1;
         }
 
-        .legend-box {
-            display: flex;
-            gap: 20px;
-            font-size: 0.85rem;
-            margin-bottom: 12px;
-            color: #cbd5e1;
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
         }
-        .legend-item { display: flex; align-items: center; gap: 6px; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-        .dot-rank { background: #0284c7; box-shadow: 0 0 6px #38bdf8; }
-        .dot-vehicle { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
 
-        /* Leaflet Map Popup Styling */
-        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-            background: #0f172a !important;
-            color: #f8fafc !important;
-            border: 1px solid #334155;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
         }
+
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #334155;
+        }
+
+        th { background: #0f172a; color: #94a3b8; }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .btn-delete:hover { background: #dc2626; }
     </style>
 </head>
 <body>
 
-    <!-- Authentication Overlay -->
-    <div id="loginModal" class="modal-overlay">
-        <div class="login-card">
-            <span class="badge">RESTRICT ACCESS</span>
-            <h2>Administrator Login</h2>
-            <p>City of Harare Central Operations</p>
+    <!-- ADMIN LOGIN SECTION -->
+    <div id="loginView" class="card login-card">
+        <span class="badge-pill">RESTRICT ACCESS</span>
+        <h2 style="margin: 15px 0 5px 0;">Administrator Login</h2>
+        <div style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;">City of Harare Central Operations</div>
 
-            <form id="loginForm" autocomplete="off">
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="username" value="admin" readonly tabindex="-1">
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="password" placeholder="Enter password" autocomplete="new-password" required>
-                </div>
-                <button type="submit" class="btn-submit">Authenticate Dashboard</button>
-            </form>
-            <span id="errorMessage" class="error-msg"></span>
-        </div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="adminUser">Username</label>
+                <input type="text" id="adminUser" placeholder="admin" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="adminPass">Password</label>
+                <input type="password" id="adminPass" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-primary">Authenticate Dashboard</button>
+        </form>
+        <div id="loginMsg" class="msg-text"></div>
     </div>
 
-    <!-- Main Protected Dashboard -->
-    <div id="dashboardContent" class="dashboard-container">
+    <!-- MAIN DASHBOARD SECTION -->
+    <div id="dashboard" class="container">
+        
         <div class="header">
             <h1>City of Harare CBD Fleet Control</h1>
-            <span style="color: #4ade80; font-weight: bold;">● Telemetry Active</span>
+            <span class="status-badge">● Telemetry Active</span>
         </div>
 
-        <!-- Vehicle Registration Panel -->
-        <div class="panel">
-            <h3>+ Register Vehicle & Driver Access PIN</h3>
-            <form id="registerForm" class="inline-form" autocomplete="off">
-                <input type="text" id="regPlate" placeholder="Plate (e.g. AEB-9021)" required>
-                <input type="text" id="regPin" placeholder="Driver Access PIN (e.g. 1234)" required>
-                <button type="submit" class="btn-submit" style="width: auto; margin-top: 0; padding: 12px 24px;">Save & Generate PIN</button>
+        <!-- VEHICLE REGISTRATION PANEL -->
+        <div class="card">
+            <h3 style="margin-top: 0; font-size: 1.1rem; color: #f8fafc;">+ Register Vehicle & Driver Access PIN</h3>
+            <form id="regForm" class="register-grid">
+                <div>
+                    <label for="regPlate">License Plate</label>
+                    <input type="text" id="regPlate" placeholder="e.g. ASD-1234" required>
+                </div>
+                <div>
+                    <label for="regPin">Driver Access PIN</label>
+                    <input type="text" id="regPin" placeholder="e.g. 2005">
+                </div>
+                <div>
+                    <button type="submit" class="btn-save">Save & Generate PIN</button>
+                </div>
             </form>
-            <div id="regStatus" class="status-msg"></div>
+            <div id="regMsg" class="msg-text"></div>
         </div>
 
-        <!-- Interactive Map & Active Vehicle Section -->
-        <div class="panel">
-            <h3>Harare CBD Live Telemetry & Legal Bus/Kombi Ranks</h3>
-
-            <!-- Active Vehicles Monitor Section -->
-            <div class="active-vehicles-summary">
-                <div class="summary-header">
-                    <strong style="color: #f8fafc; font-size: 0.95rem;">Active Fleet Tracking Monitor</strong>
-                    <span id="activeCountBadge" class="counter-badge">Active Vehicles Online: 0</span>
+        <!-- LIVE TELEMETRY MAP & RANKS -->
+        <div class="card">
+            <div class="map-header">
+                <div>
+                    <h3 style="margin: 0; color: #f8fafc;">Harare CBD Live Telemetry & Legal Bus/Kombi Ranks</h3>
                 </div>
-                <div id="plateListContainer" class="plate-list">
-                    <span style="color: #64748b; font-size: 0.85rem; font-style: italic;">No active broadcasting vehicles currently online.</span>
+                <div style="background: #0f172a; border: 1px solid #334155; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; color: #4ade80;">
+                    Active Vehicles Online: <span id="onlineCount">0</span>
                 </div>
             </div>
 
-            <div class="legend-box">
-                <div class="legend-item"><span class="dot dot-rank"></span> Legal Designated Rank</div>
-                <div class="legend-item"><span class="dot dot-vehicle"></span> Active Vehicle (Live WebSocket)</div>
+            <div id="map"></div>
+
+            <!-- REGISTERED VEHICLES TABLE -->
+            <div class="table-container">
+                <h4 style="margin: 15px 0 10px 0; color: #38bdf8;">Authorized Registered Vehicles</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Plate</th>
+                            <th>Access PIN</th>
+                            <th>Registration Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vehicleTableBody">
+                        <tr><td colspan="4" style="text-align: center; color: #94a3b8;">Loading records...</td></tr>
+                    </tbody>
+                </table>
             </div>
-            <div id="cbdMap"></div>
         </div>
+
     </div>
 
-    <!-- Leaflet JS Library -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script>
-        let map;
-        let vehicleMarkers = {};
+        // DOM Elements
+        const loginView = document.getElementById('loginView');
+        const dashboard = document.getElementById('dashboard');
+        const loginForm = document.getElementById('loginForm');
+        const loginMsg = document.getElementById('loginMsg');
 
-        // Legal Harare CBD Bus/Taxi Ranks Coordinates
-        const legalRanks = [
-            { name: "Copacabana Bus Terminus", lat: -17.8315, lng: 31.0450, desc: "CBD West Commuter Hub" },
-            { name: "Fourth Street Bus Terminus", lat: -17.8322, lng: 31.0565, desc: "CBD East Commuter Hub" },
-            { name: "Market Square Bus Terminus", lat: -17.8358, lng: 31.0408, desc: "South-West Transit Hub" },
-            { name: "Charge Office Bus Terminus", lat: -17.8340, lng: 31.0520, desc: "Central Commuter Hub" }
-        ];
+        const regForm = document.getElementById('regForm');
+        const regPlate = document.getElementById('regPlate');
+        const regPin = document.getElementById('regPin');
+        const regMsg = document.getElementById('regMsg');
+        const vehicleTableBody = document.getElementById('vehicleTableBody');
+        const onlineCount = document.getElementById('onlineCount');
 
-        // Ensure password field is blank on load
-        window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('password').value = '';
-        });
+        let map, ws;
+        let vehicleMarkers = new Map();
 
-        // Initialize Map centered over Harare CBD using OpenStreetMap standard tiles
-        function initMap() {
-            map = L.map('cbdMap').setView([-17.8292, 31.0522], 14);
-
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-
-            // Add Legal Rank Markers
-            legalRanks.forEach(rank => {
-                const rankIcon = L.divIcon({
-                    className: 'custom-rank-icon',
-                    html: `<div style="background:#0284c7; color:#fff; border: 2px solid #38bdf8; border-radius:50%; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold;">R</div>`,
-                    iconSize: [22, 22]
-                });
-
-                L.marker([rank.lat, rank.lng], { icon: rankIcon })
-                    .addTo(map)
-                    .bindPopup(`<strong>${rank.name}</strong><br/>${rank.desc}`);
-            });
-        }
-
-        // Establish WebSocket Connection for Live Fleet Updates
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const ws = new WebSocket(`${protocol}//${window.location.host}`);
-
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'FLEET_UPDATE' && Array.isArray(data.vehicles)) {
-                        updateVehicleMarkers(data.vehicles);
-                        updateActiveVehicleSection(data.vehicles);
-                    }
-                } catch (e) {
-                    console.error("Error parsing WebSocket telemetry stream:", e);
-                }
-            };
-
-            ws.onclose = () => setTimeout(connectWebSocket, 3000);
-        }
-
-        // Update Dynamic Vehicle Markers on Map
-        function updateVehicleMarkers(vehicles) {
-            vehicles.forEach(([plate, info]) => {
-                const { lat, lng, speed, timestamp } = info;
-
-                const vehicleIcon = L.divIcon({
-                    className: 'custom-vehicle-icon',
-                    html: `<div style="background:#22c55e; color:#000; border: 2px solid #ffffff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px;">🚌</div>`,
-                    iconSize: [24, 24]
-                });
-
-                if (vehicleMarkers[plate]) {
-                    vehicleMarkers[plate].setLatLng([lat, lng]);
-                    vehicleMarkers[plate].getPopup().setContent(`<strong>Plate: ${plate}</strong><br/>Speed: ${speed} km/h<br/>Last Ping: ${new Date(timestamp).toLocaleTimeString()}`);
-                } else {
-                    const marker = L.marker([lat, lng], { icon: vehicleIcon })
-                        .addTo(map)
-                        .bindPopup(`<strong>Plate: ${plate}</strong><br/>Speed: ${speed} km/h<br/>Last Ping: ${new Date(timestamp).toLocaleTimeString()}`);
-                    vehicleMarkers[plate] = marker;
-                }
-            });
-        }
-
-        // Update Active Vehicle Counter and License Plate List above the map
-        function updateActiveVehicleSection(vehicles) {
-            const badge = document.getElementById('activeCountBadge');
-            const container = document.getElementById('plateListContainer');
-
-            badge.innerText = `Active Vehicles Online: ${vehicles.length}`;
-
-            if (vehicles.length === 0) {
-                container.innerHTML = `<span style="color: #64748b; font-size: 0.85rem; font-style: italic;">No active broadcasting vehicles currently online.</span>`;
-                return;
-            }
-
-            container.innerHTML = vehicles.map(([plate, info]) => {
-                const speedVal = info.speed !== undefined ? info.speed : 0;
-                return `
-                    <div class="plate-tag">
-                        <span>🚘 ${plate}</span>
-                        <span class="speed">(${speedVal} km/h)</span>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // Admin Authentication Request
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        // 1. Admin Authentication Handler
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const errSpan = document.getElementById('errorMessage');
-            errSpan.innerText = '';
+            const username = document.getElementById('adminUser').value;
+            const password = document.getElementById('adminPass').value;
+
+            loginMsg.style.color = '#cbd5e1';
+            loginMsg.innerText = 'Authenticating...';
 
             try {
                 const response = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: document.getElementById('username').value,
-                        password: document.getElementById('password').value
-                    })
+                    body: JSON.stringify({ username, password })
                 });
 
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    document.getElementById('loginModal').style.display = 'none';
-                    document.getElementById('dashboardContent').style.display = 'block';
-                    
-                    // Initialize Map & WebSockets after login modal closes
+                    loginView.style.display = 'none';
+                    dashboard.style.display = 'flex';
                     initMap();
-                    connectWebSocket();
+                    initWebSocket();
+                    loadRegisteredVehicles();
                 } else {
-                    errSpan.innerText = data.message || 'Invalid admin credentials.';
+                    loginMsg.style.color = '#f87171';
+                    loginMsg.innerText = data.message || 'Invalid admin credentials.';
                 }
             } catch (err) {
-                errSpan.innerText = 'Connection error. Check server status.';
+                console.error('Login Error:', err);
+                loginMsg.style.color = '#f87171';
+                loginMsg.innerText = 'Connection error. Check server status.';
             }
         });
 
-        // Vehicle Registration Request
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        // 2. Register Vehicle Handler
+        regForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const statusDiv = document.getElementById('regStatus');
-            statusDiv.innerText = '';
+
+            const plate = regPlate.value.trim();
+            const pin = regPin.value.trim();
+
+            regMsg.style.color = '#cbd5e1';
+            regMsg.innerText = 'Registering vehicle...';
 
             try {
-                const response = await fetch('/api/admin/register-vehicle', {
+                const response = await fetch('/api/vehicles/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        plate: document.getElementById('regPlate').value,
-                        pin: document.getElementById('regPin').value
-                    })
+                    body: JSON.stringify({ plate, pin })
                 });
 
                 const data = await response.json();
+
                 if (response.ok && data.success) {
-                    statusDiv.style.color = '#4ade80';
-                    statusDiv.innerText = data.message;
-                    document.getElementById('regPlate').value = '';
-                    document.getElementById('regPin').value = '';
+                    regMsg.style.color = '#4ade80';
+                    regMsg.innerText = data.message || `Vehicle ${plate} registered successfully.`;
+                    regPlate.value = '';
+                    regPin.value = '';
+                    loadRegisteredVehicles();
                 } else {
-                    statusDiv.style.color = '#f87171';
-                    statusDiv.innerText = data.message || 'Registration failed.';
+                    regMsg.style.color = '#f87171';
+                    regMsg.innerText = data.message || 'Error registering vehicle.';
                 }
             } catch (err) {
-                statusDiv.style.color = '#f87171';
-                statusDiv.innerText = 'Error registering vehicle.';
+                console.error('Registration Fetch Error:', err);
+                regMsg.style.color = '#f87171';
+                regMsg.innerText = 'Network error. Failed to save vehicle.';
             }
         });
+
+        // 3. Load Registered Vehicles Table
+        async function loadRegisteredVehicles() {
+            try {
+                const res = await fetch('/api/vehicles');
+                const vehicles = await res.json();
+
+                vehicleTableBody.innerHTML = '';
+                const keys = Object.keys(vehicles);
+
+                if (keys.length === 0) {
+                    vehicleTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #94a3b8;">No registered vehicles found.</td></tr>';
+                    return;
+                }
+
+                keys.forEach(plate => {
+                    const item = vehicles[plate];
+                    const row = document.createElement('tr');
+                    
+                    const dateFormatted = item.registeredAt ? new Date(item.registeredAt).toLocaleString() : 'N/A';
+
+                    row.innerHTML = `
+                        <td style="font-weight: bold; color: #38bdf8;">${item.plate}</td>
+                        <td>${item.pin || 'N/A'}</td>
+                        <td>${dateFormatted}</td>
+                        <td><button class="btn-delete" onclick="deleteVehicle('${item.plate}')">Delete</button></td>
+                    `;
+                    vehicleTableBody.appendChild(row);
+                });
+            } catch (err) {
+                console.error('Error loading vehicles:', err);
+            }
+        }
+
+        // 4. Delete Vehicle Action
+        window.deleteVehicle = async function(plate) {
+            if (!confirm(`Are you sure you want to remove ${plate}?`)) return;
+
+            try {
+                const res = await fetch(`/api/vehicles/${encodeURIComponent(plate)}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadRegisteredVehicles();
+                } else {
+                    alert(data.message || 'Failed to delete vehicle.');
+                }
+            } catch (err) {
+                console.error('Delete error:', err);
+            }
+        };
+
+        // 5. Initialize Leaflet Map
+        function initMap() {
+            if (map) return;
+            map = L.map('map').setView([-17.8292, 31.0522], 14); // Harare CBD Coordinates
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+        }
+
+        // 6. Initialize WebSocket for Live Telemetry
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'FLEET_UPDATE' && Array.isArray(data.vehicles)) {
+                        updateMapMarkers(data.vehicles);
+                    }
+                } catch (err) {
+                    console.error('WebSocket parse error:', err);
+                }
+            };
+        }
+
+        // 7. Update Vehicle Markers on Map
+        function updateMapMarkers(vehiclesArray) {
+            onlineCount.innerText = vehiclesArray.length;
+
+            const activePlates = new Set();
+
+            vehiclesArray.forEach(([plate, telemetry]) => {
+                activePlates.add(plate);
+
+                if (vehicleMarkers.has(plate)) {
+                    vehicleMarkers.get(plate).setLatLng([telemetry.lat, telemetry.lng]);
+                } else {
+                    const marker = L.marker([telemetry.lat, telemetry.lng]).addTo(map)
+                        .bindPopup(`<b>Plate: ${plate}</b><br>Speed: ${Math.round(telemetry.speed || 0)} km/h`);
+                    vehicleMarkers.set(plate, marker);
+                }
+            });
+
+            // Remove disconnected markers
+            vehicleMarkers.forEach((marker, plate) => {
+                if (!activePlates.has(plate)) {
+                    map.removeLayer(marker);
+                    vehicleMarkers.delete(plate);
+                }
+            });
+        }
     </script>
 </body>
 </html>
