@@ -3,248 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Telemetry Portal</title>
+    <title>Driver Telemetry Terminal - City of Harare</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body {
-            background-color: #0b0f19;
-            color: #f8fafc;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .portal-card {
-            background: #1e293b;
-            padding: 35px;
-            border-radius: 12px;
-            border: 1px solid #334155;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            text-align: center;
-        }
-
-        .portal-card h2 { color: #ffffff; margin: 0 0 8px 0; font-size: 1.5rem; }
-        .portal-card p { color: #94a3b8; font-size: 0.85rem; margin-bottom: 25px; line-height: 1.4; }
-
+        body { background-color: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 25px; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .form-group { margin-bottom: 15px; text-align: left; }
-        .form-group label { display: block; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 5px; }
-
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            color: #ffffff;
-            border-radius: 6px;
-            font-size: 0.95rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        input:focus { border-color: #38bdf8; }
-        input:disabled { background: #1e293b; color: #64748b; cursor: not-allowed; }
-
-        .btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 0.95rem;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: all 0.2s;
-        }
-
-        .btn-start { background: #16a34a; color: #ffffff; }
-        .btn-start:hover { background: #15803d; }
-
-        .btn-stop { background: #dc2626; color: #ffffff; display: none; }
-        .btn-stop:hover { background: #b91c1c; }
-
-        .status-badge {
-            margin-top: 20px;
-            font-size: 0.85rem;
-            font-weight: bold;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            color: #4ade80;
-        }
-
-        .pulse-dot {
-            width: 10px;
-            height: 10px;
-            background-color: #22c55e;
-            border-radius: 50%;
-            box-shadow: 0 0 8px #22c55e;
-        }
-
-        .msg-box { color: #f87171; font-size: 0.85rem; margin-top: 15px; min-height: 20px; }
+        label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 6px; }
+        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; font-size: 1rem; outline: none; }
+        .btn-primary { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+        .btn-primary:hover { background: #0369a1; }
+        .status-box { margin-top: 20px; padding: 15px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; font-size: 0.9rem; text-align: left; }
+        .live-indicator { display: inline-block; width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; margin-right: 6px; }
+        .live-active { background-color: #22c55e; box-shadow: 0 0 8px #22c55e; }
     </style>
 </head>
 <body>
 
-    <div class="portal-card">
-        <h2>Driver Tracking Portal</h2>
-        <p>Enter assigned credentials to launch telemetry transmitter.</p>
+    <div class="card">
+        <h2 style="color: #38bdf8; margin-top: 0;">Driver Telemetry Terminal</h2>
+        <p style="color: #94a3b8; font-size: 0.85rem;">Harare Public Transport Live Location Stream</p>
 
-        <form id="driverForm" autocomplete="off">
+        <form id="driverForm">
             <div class="form-group">
-                <label>Vehicle Plate Number</label>
-                <input type="text" id="plateNumber" placeholder="e.g. ABC-2005" required>
+                <label for="plateInput">Vehicle License Plate</label>
+                <input type="text" id="plateInput" placeholder="e.g. ASD-1234" required>
             </div>
             <div class="form-group">
-                <label>Access PIN</label>
-                <input type="password" id="accessPin" placeholder="••••" required>
+                <label for="pinInput">Access PIN</label>
+                <input type="password" id="pinInput" placeholder="4-digit PIN" required>
             </div>
-
-            <button type="submit" id="btnStart" class="btn btn-start">Verify & Begin Streaming</button>
-            <button type="button" id="btnStop" class="btn btn-stop">Stop Tracking & Log Off</button>
+            <button type="submit" class="btn-primary">Start Live Transmission</button>
         </form>
 
-        <div id="statusBadge" class="status-badge">
-            <span class="pulse-dot"></span> LIVE TELEMETRY BROADCASTING ACTIVE
-        </div>
+        <div id="driverMsg" style="margin-top: 15px; font-size: 0.88rem; font-weight: bold;"></div>
 
-        <div id="messageBox" class="msg-box"></div>
+        <div id="telemetryStatus" class="status-box" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <span style="font-weight: bold; color: #38bdf8;">Transmission Status</span>
+                <span><span id="dotIndicator" class="live-indicator"></span><span id="statusLabel" style="font-size: 0.8rem; font-weight: bold;">OFFLINE</span></span>
+            </div>
+            <div style="color: #94a3b8; font-size: 0.85rem;">
+                Vehicle: <span id="activePlate" style="color: #fff; font-weight: bold;">-</span><br>
+                Latitude: <span id="latVal" style="color: #fff;">0.0000</span><br>
+                Longitude: <span id="lngVal" style="color: #fff;">0.0000</span><br>
+                Speed: <span id="speedVal" style="color: #fff;">0 km/h</span>
+            </div>
+        </div>
     </div>
 
     <script>
+        const driverForm = document.getElementById('driverForm');
+        const driverMsg = document.getElementById('driverMsg');
+        const telemetryStatus = document.getElementById('telemetryStatus');
+        const dotIndicator = document.getElementById('dotIndicator');
+        const statusLabel = document.getElementById('statusLabel');
+        const activePlate = document.getElementById('activePlate');
+        const latVal = document.getElementById('latVal');
+        const lngVal = document.getElementById('lngVal');
+        const speedVal = document.getElementById('speedVal');
+
         let ws;
         let watchId = null;
-        let activePlate = null;
+        let currentPlate = '';
 
-        const driverForm = document.getElementById('driverForm');
-        const plateInput = document.getElementById('plateNumber');
-        const pinInput = document.getElementById('accessPin');
-        const btnStart = document.getElementById('btnStart');
-        const btnStop = document.getElementById('btnStop');
-        const statusBadge = document.getElementById('statusBadge');
-        const messageBox = document.getElementById('messageBox');
-
-        // Form Submission - Authenticate and Start Tracking
         driverForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            messageBox.innerText = '';
 
-            const plate = plateInput.value.trim();
-            const pin = pinInput.value.trim();
+            const plate = document.getElementById('plateInput').value.trim().toUpperCase();
+            const pin = document.getElementById('pinInput').value.trim();
+
+            driverMsg.style.color = '#cbd5e1';
+            driverMsg.innerText = 'Authenticating vehicle...';
 
             try {
-                // Verify credentials with backend
-                const response = await fetch('/api/driver/verify', {
+                const res = await fetch('/api/driver/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ plate, pin })
                 });
 
-                const data = await response.json();
+                const data = await res.json();
 
-                if (response.ok && data.success) {
-                    activePlate = plate;
-                    startTracking();
+                if (res.ok && data.success) {
+                    driverMsg.style.color = '#4ade80';
+                    driverMsg.innerText = 'Authenticated! Requesting location access...';
+                    currentPlate = plate;
+                    driverForm.style.display = 'none';
+                    telemetryStatus.style.display = 'block';
+                    activePlate.innerText = currentPlate;
+
+                    initWebSocketAndGPS();
                 } else {
-                    messageBox.style.color = '#f87171';
-                    messageBox.innerText = data.message || 'Invalid plate or PIN.';
+                    driverMsg.style.color = '#f87171';
+                    driverMsg.innerText = data.message || 'Invalid Plate or Access PIN.';
                 }
             } catch (err) {
-                // Fallback for direct offline socket connection test
-                activePlate = plate;
-                startTracking();
+                console.error(err);
+                driverMsg.style.color = '#f87171';
+                driverMsg.innerText = 'Connection error. Check server status.';
             }
         });
 
-        // Initialize GPS Watcher & WebSocket Streaming
-        function startTracking() {
-            if (!navigator.geolocation) {
-                messageBox.style.color = '#f87171';
-                messageBox.innerText = 'Geolocation is not supported by your browser.';
-                return;
-            }
-
+        function initWebSocketAndGPS() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${protocol}//${window.location.host}`);
 
             ws.onopen = () => {
-                // Lock Inputs
-                plateInput.disabled = true;
-                pinInput.disabled = true;
-                btnStart.style.display = 'none';
-                btnStop.style.display = 'block';
-                statusBadge.style.display = 'flex';
-                messageBox.innerText = '';
-
-                // Start active position watching
-                watchId = navigator.geolocation.watchPosition(
-                    (position) => {
-                        const payload = {
-                            type: 'DRIVER_TELEMETRY',
-                            plate: activePlate,
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude,
-                            speed: Math.round((position.coords.speed || 0) * 3.6), // m/s to km/h
-                            timestamp: Date.now()
-                        };
-
-                        if (ws && ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify(payload));
-                        }
-                    },
-                    (error) => {
-                        messageBox.style.color = '#f87171';
-                        messageBox.innerText = 'Location access denied or unavailable.';
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        maximumAge: 1000,
-                        timeout: 5000
-                    }
-                );
+                dotIndicator.classList.add('live-active');
+                statusLabel.innerText = 'BROADCASTING';
+                statusLabel.style.color = '#4ade80';
+                startGPSTracking();
             };
 
-            ws.onerror = () => {
-                messageBox.style.color = '#f87171';
-                messageBox.innerText = 'Failed to connect to tracking server.';
+            ws.onclose = () => {
+                dotIndicator.classList.remove('live-active');
+                statusLabel.innerText = 'DISCONNECTED';
+                statusLabel.style.color = '#ef4444';
             };
         }
 
-        // Stop Tracking & Clear Hardware GPS
-        btnStop.addEventListener('click', stopTrackingAndLogOff);
-
-        function stopTrackingAndLogOff() {
-            // 1. Stop Browser GPS Hardware Sensor
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
+        function startGPSTracking() {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by your browser.');
+                return;
             }
 
-            // 2. Send Offline Signal to Server & Close Socket
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    type: 'DRIVER_OFFLINE',
-                    plate: activePlate
-                }));
-                ws.close();
-            }
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    const speed = pos.coords.speed ? (pos.coords.speed * 3.6) : 0; // m/s to km/h
 
-            // 3. Reset UI State
-            activePlate = null;
-            plateInput.disabled = false;
-            pinInput.disabled = false;
-            pinInput.value = '';
-            
-            btnStart.style.display = 'block';
-            btnStop.style.display = 'none';
-            statusBadge.style.display = 'none';
+                    latVal.innerText = lat.toFixed(5);
+                    lngVal.innerText = lng.toFixed(5);
+                    speedVal.innerText = `${Math.round(speed)} km/h`;
 
-            messageBox.style.color = '#4ade80';
-            messageBox.innerText = 'Logged off successfully. Location tracking terminated.';
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'TELEMETRY_UPDATE',
+                            plate: currentPlate,
+                            lat: lat,
+                            lng: lng,
+                            speed: speed
+                        }));
+                    }
+                },
+                (err) => {
+                    console.error('GPS Watch Error:', err);
+                    alert('Please allow Location Permissions on your phone to transmit telemetry.');
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
+                }
+            );
         }
     </script>
 </body>
