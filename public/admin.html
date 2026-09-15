@@ -4,165 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>City of Harare CBD Fleet Control</title>
-    <!-- Leaflet Map CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body {
-            background-color: #0b0f19;
-            color: #f8fafc;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto 20px auto;
-        }
-
+        body { background-color: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; min-height: 100vh; }
+        .header { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto 20px auto; }
         .header h1 { font-size: 1.6rem; color: #38bdf8; margin: 0; }
         .status-badge { color: #4ade80; font-size: 0.85rem; font-weight: bold; }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* LOGIN CARD */
-        .card {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-
-        .login-card {
-            max-width: 400px;
-            margin: 80px auto;
-            text-align: center;
-        }
-
-        .badge-pill {
-            background: rgba(234, 88, 12, 0.2);
-            color: #f97316;
-            font-size: 0.75rem;
-            font-weight: bold;
-            padding: 4px 12px;
-            border-radius: 20px;
-            text-transform: uppercase;
-            border: 1px solid rgba(249, 115, 22, 0.3);
-        }
-
+        .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .login-card { max-width: 400px; margin: 80px auto; text-align: center; }
+        .badge-pill { background: rgba(234, 88, 12, 0.2); color: #f97316; font-size: 0.75rem; font-weight: bold; padding: 4px 12px; border-radius: 20px; text-transform: uppercase; border: 1px solid rgba(249, 115, 22, 0.3); }
         .form-group { margin-bottom: 15px; text-align: left; }
         label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 6px; }
-        input {
-            width: 100%;
-            padding: 10px 14px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 6px;
-            color: #ffffff;
-            font-size: 0.95rem;
-            outline: none;
-        }
-        input:focus { border-color: #f97316; }
-
-        .btn-primary {
-            width: 100%;
-            padding: 12px;
-            background: #ea580c;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+        input { width: 100%; padding: 10px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #ffffff; font-size: 0.95rem; outline: none; }
+        .btn-primary { width: 100%; padding: 12px; background: #ea580c; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; }
         .btn-primary:hover { background: #c2410c; }
-
-        .btn-save {
-            background: #ea580c;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            white-space: nowrap;
-        }
+        .btn-save { background: #ea580c; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-save:hover { background: #c2410c; }
-
-        .register-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr auto;
-            gap: 15px;
-            align-items: end;
-        }
-
+        .register-grid { display: grid; grid-template-columns: 1fr 1fr auto; gap: 15px; align-items: end; }
         .msg-text { margin-top: 10px; font-size: 0.88rem; font-weight: bold; }
-
-        /* DASHBOARD GRID */
         #dashboard { display: none; }
-
-        .map-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        #map {
-            height: 450px;
-            width: 100%;
-            border-radius: 8px;
-            border: 1px solid #334155;
-        }
-
-        .table-container {
-            margin-top: 20px;
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-            font-size: 0.9rem;
-        }
-
-        th, td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #334155;
-        }
-
+        .map-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        #map { height: 450px; width: 100%; border-radius: 8px; border: 1px solid #334155; }
+        .table-container { margin-top: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid #334155; }
         th { background: #0f172a; color: #94a3b8; }
-
-        .btn-delete {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
+        .btn-delete { background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
         .btn-delete:hover { background: #dc2626; }
     </style>
 </head>
 <body>
 
-    <!-- ADMIN LOGIN SECTION -->
     <div id="loginView" class="card login-card">
         <span class="badge-pill">RESTRICT ACCESS</span>
         <h2 style="margin: 15px 0 5px 0;">Administrator Login</h2>
@@ -182,15 +58,12 @@
         <div id="loginMsg" class="msg-text"></div>
     </div>
 
-    <!-- MAIN DASHBOARD SECTION -->
     <div id="dashboard" class="container">
-        
         <div class="header">
             <h1>City of Harare CBD Fleet Control</h1>
             <span class="status-badge">● Telemetry Active</span>
         </div>
 
-        <!-- VEHICLE REGISTRATION PANEL -->
         <div class="card">
             <h3 style="margin-top: 0; font-size: 1.1rem; color: #f8fafc;">+ Register Vehicle & Driver Access PIN</h3>
             <form id="regForm" class="register-grid">
@@ -209,7 +82,6 @@
             <div id="regMsg" class="msg-text"></div>
         </div>
 
-        <!-- LIVE TELEMETRY MAP & RANKS -->
         <div class="card">
             <div class="map-header">
                 <div>
@@ -222,7 +94,6 @@
 
             <div id="map"></div>
 
-            <!-- REGISTERED VEHICLES TABLE -->
             <div class="table-container">
                 <h4 style="margin: 15px 0 10px 0; color: #38bdf8;">Authorized Registered Vehicles</h4>
                 <table>
@@ -240,16 +111,13 @@
                 </table>
             </div>
         </div>
-
     </div>
 
     <script>
-        // DOM Elements
         const loginView = document.getElementById('loginView');
         const dashboard = document.getElementById('dashboard');
         const loginForm = document.getElementById('loginForm');
         const loginMsg = document.getElementById('loginMsg');
-
         const regForm = document.getElementById('regForm');
         const regPlate = document.getElementById('regPlate');
         const regPin = document.getElementById('regPin');
@@ -260,7 +128,6 @@
         let map, ws;
         let vehicleMarkers = new Map();
 
-        // 1. Admin Authentication Handler
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('adminUser').value;
@@ -289,16 +156,14 @@
                     loginMsg.innerText = data.message || 'Invalid admin credentials.';
                 }
             } catch (err) {
-                console.error('Login Error:', err);
+                console.error(err);
                 loginMsg.style.color = '#f87171';
                 loginMsg.innerText = 'Connection error. Check server status.';
             }
         });
 
-        // 2. Register Vehicle Handler
         regForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const plate = regPlate.value.trim();
             const pin = regPin.value.trim();
 
@@ -325,18 +190,16 @@
                     regMsg.innerText = data.message || 'Error registering vehicle.';
                 }
             } catch (err) {
-                console.error('Registration Fetch Error:', err);
+                console.error(err);
                 regMsg.style.color = '#f87171';
                 regMsg.innerText = 'Network error. Failed to save vehicle.';
             }
         });
 
-        // 3. Load Registered Vehicles Table
         async function loadRegisteredVehicles() {
             try {
                 const res = await fetch('/api/vehicles');
                 const vehicles = await res.json();
-
                 vehicleTableBody.innerHTML = '';
                 const keys = Object.keys(vehicles);
 
@@ -348,7 +211,6 @@
                 keys.forEach(plate => {
                     const item = vehicles[plate];
                     const row = document.createElement('tr');
-                    
                     const dateFormatted = item.registeredAt ? new Date(item.registeredAt).toLocaleString() : 'N/A';
 
                     row.innerHTML = `
@@ -360,18 +222,15 @@
                     vehicleTableBody.appendChild(row);
                 });
             } catch (err) {
-                console.error('Error loading vehicles:', err);
+                console.error(err);
             }
         }
 
-        // 4. Delete Vehicle Action
         window.deleteVehicle = async function(plate) {
             if (!confirm(`Are you sure you want to remove ${plate}?`)) return;
 
             try {
-                const res = await fetch(`/api/vehicles/${encodeURIComponent(plate)}`, {
-                    method: 'DELETE'
-                });
+                const res = await fetch(`/api/vehicles/${encodeURIComponent(plate)}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
                     loadRegisteredVehicles();
@@ -379,14 +238,13 @@
                     alert(data.message || 'Failed to delete vehicle.');
                 }
             } catch (err) {
-                console.error('Delete error:', err);
+                console.error(err);
             }
         };
 
-        // 5. Initialize Leaflet Map
         function initMap() {
             if (map) return;
-            map = L.map('map').setView([-17.8292, 31.0522], 14); // Harare CBD Coordinates
+            map = L.map('map').setView([-17.8292, 31.0522], 14); // Harare CBD
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -394,7 +252,6 @@
             }).addTo(map);
         }
 
-        // 6. Initialize WebSocket for Live Telemetry
         function initWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${protocol}//${window.location.host}`);
@@ -406,15 +263,13 @@
                         updateMapMarkers(data.vehicles);
                     }
                 } catch (err) {
-                    console.error('WebSocket parse error:', err);
+                    console.error(err);
                 }
             };
         }
 
-        // 7. Update Vehicle Markers on Map
         function updateMapMarkers(vehiclesArray) {
             onlineCount.innerText = vehiclesArray.length;
-
             const activePlates = new Set();
 
             vehiclesArray.forEach(([plate, telemetry]) => {
@@ -429,7 +284,6 @@
                 }
             });
 
-            // Remove disconnected markers
             vehicleMarkers.forEach((marker, plate) => {
                 if (!activePlates.has(plate)) {
                     map.removeLayer(marker);
