@@ -46,24 +46,24 @@ function saveVehicles(vehicles) {
 // AUTHENTICATION ENDPOINTS
 // ----------------------------------------------------
 
-// Admin Login Endpoint
+// 1. Admin Login Endpoint
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
     const cleanUser = username ? username.trim() : '';
     const cleanPass = password ? password.trim() : '';
-    
+
     if (cleanUser === 'admin' && cleanPass === 'April2005') {
         return res.json({ success: true, message: 'Admin authentication successful.' });
     }
     return res.status(401).json({ success: false, message: 'Invalid admin credentials.' });
 });
 
-// Municipal Officer / Enforcement Login Endpoint
+// 2. Municipal Officer / Enforcement Login Endpoint
 app.post('/api/enforcement/login', (req, res) => {
     const { username, password } = req.body;
     const cleanUser = username ? username.trim() : '';
     const cleanPass = password ? password.trim() : '';
-    
+
     if ((cleanUser === 'officer' || cleanUser === 'admin') && cleanPass === 'April2005') {
         return res.json({ success: true, message: 'Officer authentication successful.' });
     }
@@ -74,7 +74,71 @@ app.post('/api/enforcement/login', (req, res) => {
 // VEHICLE MANAGEMENT ENDPOINTS
 // ----------------------------------------------------
 
-// Check Registration (Enforcement Verification)
+// 3. Get All Registered Vehicles
+app.get('/api/vehicles', (req, res) => {
+    const vehicles = loadVehicles();
+    res.json(vehicles);
+});
+
+// 4. Register New Vehicle & PIN (Accepts flexible client payload keys)
+app.post('/api/vehicles/register', (req, res) => {
+    try {
+        const rawPlate = req.body.plate || req.body.licensePlate || req.body.vehiclePlate;
+        const rawPin = req.body.pin || req.body.driverPin || req.body.accessPin;
+
+        if (!rawPlate) {
+            return res.status(400).json({ success: false, message: 'License plate is required.' });
+        }
+
+        const cleanPlate = rawPlate.toString().trim().toUpperCase();
+        const cleanPin = rawPin ? rawPin.toString().trim() : Math.floor(1000 + Math.random() * 9000).toString();
+
+        const vehicles = loadVehicles();
+
+        if (vehicles[cleanPlate]) {
+            return res.status(400).json({ success: false, message: `Vehicle ${cleanPlate} is already registered.` });
+        }
+
+        // Save new vehicle record
+        vehicles[cleanPlate] = {
+            plate: cleanPlate,
+            pin: cleanPin,
+            registeredAt: new Date().toISOString()
+        };
+
+        saveVehicles(vehicles);
+
+        return res.json({
+            success: true,
+            message: `Vehicle ${cleanPlate} registered successfully with PIN ${cleanPin}.`,
+            plate: cleanPlate,
+            pin: cleanPin
+        });
+    } catch (error) {
+        console.error('Error during vehicle registration:', error);
+        return res.status(500).json({ success: false, message: 'Server error saving vehicle record.' });
+    }
+});
+
+// 5. Delete Registered Vehicle
+app.delete('/api/vehicles/:plate', (req, res) => {
+    const cleanPlate = req.params.plate.trim().toUpperCase();
+    const vehicles = loadVehicles();
+
+    if (!vehicles[cleanPlate]) {
+        return res.status(404).json({ success: false, message: 'Vehicle not found.' });
+    }
+
+    delete vehicles[cleanPlate];
+    activeFleet.delete(cleanPlate);
+
+    saveVehicles(vehicles);
+    broadcastFleet();
+
+    res.json({ success: true, message: `Vehicle ${cleanPlate} removed successfully.` });
+});
+
+// 6. Officer Verification Check Endpoint
 app.get('/api/enforcement/check-registration/:plate', (req, res) => {
     const rawPlate = req.params.plate;
     if (!rawPlate) {
@@ -98,62 +162,6 @@ app.get('/api/enforcement/check-registration/:plate', (req, res) => {
             plate: searchPlate
         });
     }
-});
-
-// Get All Registered Vehicles
-app.get('/api/vehicles', (req, res) => {
-    const vehicles = loadVehicles();
-    res.json(vehicles);
-});
-
-// Register New Vehicle with PIN
-app.post('/api/vehicles/register', (req, res) => {
-    const { plate, pin } = req.body;
-
-    if (!plate) {
-        return res.status(400).json({ success: false, message: 'License plate is required.' });
-    }
-
-    const cleanPlate = plate.trim().toUpperCase();
-    const cleanPin = pin ? pin.toString().trim() : Math.floor(1000 + Math.random() * 9000).toString();
-
-    const vehicles = loadVehicles();
-
-    if (vehicles[cleanPlate]) {
-        return res.status(400).json({ success: false, message: 'Vehicle already registered.' });
-    }
-
-    vehicles[cleanPlate] = {
-        plate: cleanPlate,
-        pin: cleanPin,
-        registeredAt: new Date().toISOString()
-    };
-
-    saveVehicles(vehicles);
-    res.json({ 
-        success: true, 
-        message: `Vehicle ${cleanPlate} registered successfully.`, 
-        plate: cleanPlate, 
-        pin: cleanPin 
-    });
-});
-
-// Delete Registered Vehicle
-app.delete('/api/vehicles/:plate', (req, res) => {
-    const cleanPlate = req.params.plate.trim().toUpperCase();
-    const vehicles = loadVehicles();
-
-    if (!vehicles[cleanPlate]) {
-        return res.status(404).json({ success: false, message: 'Vehicle not found.' });
-    }
-
-    delete vehicles[cleanPlate];
-    activeFleet.delete(cleanPlate);
-
-    saveVehicles(vehicles);
-    broadcastFleet();
-
-    res.json({ success: true, message: `Vehicle ${cleanPlate} removed successfully.` });
 });
 
 // ----------------------------------------------------
@@ -207,5 +215,5 @@ function broadcastFleet() {
 
 // Start HTTP Server
 server.listen(PORT, () => {
-    console.log(`Harare CBD Fleet Server running on port ${PORT}`);
+    console.log(`City of Harare Fleet Control running on port ${PORT}`);
 });
