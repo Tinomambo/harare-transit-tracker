@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // In-Memory Live Telemetry Store (Plate -> Telemetry Object)
 const activeFleet = new Map();
 
-// Helper Functions for Persistent File Storage
+// File Storage Helpers
 function loadVehicles() {
     try {
         if (!fs.existsSync(VEHICLES_FILE)) {
@@ -43,10 +43,14 @@ function saveVehicles(vehicles) {
 }
 
 // ----------------------------------------------------
-// AUTHENTICATION ENDPOINTS
+// ROUTE SHORTCUTS & AUTHENTICATION ENDPOINTS
 // ----------------------------------------------------
 
-// 1. Admin Login Endpoint
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/driver', (req, res) => res.sendFile(path.join(__dirname, 'public', 'driver.html')));
+app.get('/enforcement', (req, res) => res.sendFile(path.join(__dirname, 'public', 'enforcement.html')));
+
+// Admin Login
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
     const cleanUser = username ? username.trim() : '';
@@ -58,7 +62,7 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(401).json({ success: false, message: 'Invalid admin credentials.' });
 });
 
-// 2. Municipal Officer / Enforcement Login Endpoint
+// Enforcement Login
 app.post('/api/enforcement/login', (req, res) => {
     const { username, password } = req.body;
     const cleanUser = username ? username.trim() : '';
@@ -70,17 +74,32 @@ app.post('/api/enforcement/login', (req, res) => {
     return res.status(401).json({ success: false, message: 'Invalid enforcement credentials.' });
 });
 
+// Driver Verification / Login
+app.post('/api/driver/login', (req, res) => {
+    const { plate, pin } = req.body;
+    if (!plate || !pin) {
+        return res.status(400).json({ success: false, message: 'Plate and PIN are required.' });
+    }
+
+    const cleanPlate = plate.trim().toUpperCase();
+    const cleanPin = pin.toString().trim();
+    const vehicles = loadVehicles();
+
+    if (vehicles[cleanPlate] && vehicles[cleanPlate].pin === cleanPin) {
+        return res.json({ success: true, message: 'Driver authenticated successfully.', plate: cleanPlate });
+    }
+
+    return res.status(401).json({ success: false, message: 'Invalid Plate or Access PIN.' });
+});
+
 // ----------------------------------------------------
 // VEHICLE MANAGEMENT ENDPOINTS
 // ----------------------------------------------------
 
-// 3. Get All Registered Vehicles
 app.get('/api/vehicles', (req, res) => {
-    const vehicles = loadVehicles();
-    res.json(vehicles);
+    res.json(loadVehicles());
 });
 
-// 4. Register New Vehicle & PIN (Accepts flexible client payload keys)
 app.post('/api/vehicles/register', (req, res) => {
     try {
         const rawPlate = req.body.plate || req.body.licensePlate || req.body.vehiclePlate;
@@ -92,14 +111,12 @@ app.post('/api/vehicles/register', (req, res) => {
 
         const cleanPlate = rawPlate.toString().trim().toUpperCase();
         const cleanPin = rawPin ? rawPin.toString().trim() : Math.floor(1000 + Math.random() * 9000).toString();
-
         const vehicles = loadVehicles();
 
         if (vehicles[cleanPlate]) {
             return res.status(400).json({ success: false, message: `Vehicle ${cleanPlate} is already registered.` });
         }
 
-        // Save new vehicle record
         vehicles[cleanPlate] = {
             plate: cleanPlate,
             pin: cleanPin,
@@ -110,17 +127,16 @@ app.post('/api/vehicles/register', (req, res) => {
 
         return res.json({
             success: true,
-            message: `Vehicle ${cleanPlate} registered successfully with PIN ${cleanPin}.`,
+            message: `Vehicle ${cleanPlate} registered successfully.`,
             plate: cleanPlate,
             pin: cleanPin
         });
     } catch (error) {
-        console.error('Error during vehicle registration:', error);
-        return res.status(500).json({ success: false, message: 'Server error saving vehicle record.' });
+        console.error('Registration error:', error);
+        return res.status(500).json({ success: false, message: 'Server error saving vehicle.' });
     }
 });
 
-// 5. Delete Registered Vehicle
 app.delete('/api/vehicles/:plate', (req, res) => {
     const cleanPlate = req.params.plate.trim().toUpperCase();
     const vehicles = loadVehicles();
@@ -138,16 +154,13 @@ app.delete('/api/vehicles/:plate', (req, res) => {
     res.json({ success: true, message: `Vehicle ${cleanPlate} removed successfully.` });
 });
 
-// 6. Officer Verification Check Endpoint
 app.get('/api/enforcement/check-registration/:plate', (req, res) => {
     const rawPlate = req.params.plate;
-    if (!rawPlate) {
-        return res.status(400).json({ registered: false, message: 'Plate required' });
-    }
+    if (!rawPlate) return res.status(400).json({ registered: false, message: 'Plate required' });
 
     const searchPlate = rawPlate.trim().toUpperCase();
-    const registeredVehicles = loadVehicles();
-    const record = registeredVehicles[searchPlate];
+    const vehicles = loadVehicles();
+    const record = vehicles[searchPlate];
 
     if (record) {
         return res.json({
@@ -157,10 +170,7 @@ app.get('/api/enforcement/check-registration/:plate', (req, res) => {
             registeredAt: record.registeredAt || 'N/A'
         });
     } else {
-        return res.json({
-            registered: false,
-            plate: searchPlate
-        });
+        return res.json({ registered: false, plate: searchPlate });
     }
 });
 
@@ -169,6 +179,7 @@ app.get('/api/enforcement/check-registration/:plate', (req, res) => {
 // ----------------------------------------------------
 
 wss.on('connection', (ws) => {
+    // Send full fleet state immediately upon client connection
     ws.send(JSON.stringify({
         type: 'FLEET_UPDATE',
         vehicles: Array.from(activeFleet.entries())
@@ -180,7 +191,7 @@ wss.on('connection', (ws) => {
 
             if (data.type === 'TELEMETRY_UPDATE') {
                 const { plate, lat, lng, speed } = data;
-                if (!plate) return;
+                if (!plate || lat === undefined || lng === undefined) return;
 
                 const cleanPlate = plate.trim().toUpperCase();
 
@@ -198,6 +209,10 @@ wss.on('connection', (ws) => {
             console.error('Error parsing WebSocket message:', err);
         }
     });
+
+    ws.on('close', () => {
+        // Disconnect handler
+    });
 });
 
 function broadcastFleet() {
@@ -213,7 +228,6 @@ function broadcastFleet() {
     });
 }
 
-// Start HTTP Server
 server.listen(PORT, () => {
     console.log(`City of Harare Fleet Control running on port ${PORT}`);
 });
