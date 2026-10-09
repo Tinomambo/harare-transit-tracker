@@ -13,7 +13,7 @@ app.use(express.static('public'));
 // Supabase Database Connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Required for Supabase external SSL connections
+  ssl: { rejectUnauthorized: false } // Required for Supabase SSL connections
 });
 
 // Format Regex: Exactly 3 uppercase letters, a hyphen, and 4 numbers (e.g. ABC-2006)
@@ -26,7 +26,7 @@ function generate4DigitPin() {
 
 /**
  * POST /api/admin/login
- * Admin login authentication
+ * Admin authentication endpoint
  */
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
@@ -65,14 +65,14 @@ app.post('/api/vehicles', async (req, res) => {
     if (!REGISTRATION_REGEX.test(formattedReg)) {
       return res.status(400).json({
         success: false,
-        error: `Invalid format '${formattedReg}'. Registration must strictly follow the format ABC-2006 (e.g. ABC-2006).`
+        error: `Invalid format '${formattedReg}'. Registration must strictly follow ABC-2006 format (e.g. ABC-2006).`
       });
     }
 
     // Generate 4-digit PIN for driver access
     const driverPin = generate4DigitPin();
 
-    // Clean query targeting only registration_number, driver_pin, and status
+    // Insert into Supabase (registration_number, driver_pin, status)
     const insertQuery = `
       INSERT INTO vehicles (registration_number, driver_pin, status)
       VALUES ($1, $2, 'ACTIVE')
@@ -101,24 +101,30 @@ app.post('/api/vehicles', async (req, res) => {
 
     return res.status(500).json({ 
       success: false, 
-      error: 'Database error while registering vehicle. Make sure driver_pin column exists in Supabase.' 
+      error: 'Database error while registering vehicle. Ensure driver_pin column exists in Supabase.' 
     });
   }
 });
 
 /**
  * GET /api/vehicles
- * Fetches all registered vehicles from Supabase
+ * Fetches all registered vehicles from Supabase safely
  */
 app.get('/api/vehicles', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM vehicles ORDER BY id DESC');
-    res.json({ success: true, vehicles: rows });
+    const query = 'SELECT * FROM vehicles ORDER BY registration_number ASC;';
+    const { rows } = await pool.query(query);
+
+    return res.json({ 
+      success: true, 
+      vehicles: rows 
+    });
   } catch (error) {
     console.error('Fetch Vehicles Error:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
-      error: 'Failed to retrieve vehicles from Supabase.' 
+      error: 'Failed to retrieve vehicles from Supabase.',
+      details: error.message 
     });
   }
 });
