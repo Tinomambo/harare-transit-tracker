@@ -446,27 +446,37 @@
       }).addTo(map);
     }
 
-    // Load registered vehicles into bottom table
+    // Load registered vehicles into bottom table safely
     async function loadVehicles() {
+      const tbody = document.getElementById('vehicleTableBody');
+
       try {
         const res = await fetch('/api/vehicles');
         const data = await res.json();
-        const tbody = document.getElementById('vehicleTableBody');
 
-        if (data.success && data.vehicles.length > 0) {
-          tbody.innerHTML = data.vehicles.map(v => `
-            <tr>
-              <td>${v.id}</td>
-              <td><strong>${v.registration_number}</strong></td>
-              <td><span class="pin-badge">${v.driver_pin || 'N/A'}</span></td>
-              <td><span class="status-badge">${v.status || 'ACTIVE'}</span></td>
-            </tr>
-          `).join('');
+        if (res.ok && data.success && Array.isArray(data.vehicles) && data.vehicles.length > 0) {
+          tbody.innerHTML = data.vehicles.map((v, index) => {
+            // Flexible fallbacks to support various Supabase column names
+            const displayId = v.id || v.vehicle_id || (index + 1);
+            const regNum = v.registration_number || v.reg_number || 'N/A';
+            const pin = v.driver_pin || v.pin || 'N/A';
+            const status = v.status || 'ACTIVE';
+
+            return `
+              <tr>
+                <td>${displayId}</td>
+                <td><strong>${regNum}</strong></td>
+                <td><span class="pin-badge">${pin}</span></td>
+                <td><span class="status-badge">${status}</span></td>
+              </tr>
+            `;
+          }).join('');
         } else {
-          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No vehicles found in Supabase.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #64748b;">No vehicles found in Supabase.</td></tr>';
         }
       } catch (err) {
         console.error('Failed to load table:', err);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #f87171;">Error connecting to backend database.</td></tr>';
       }
     }
 
