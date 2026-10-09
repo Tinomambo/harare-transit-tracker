@@ -45,6 +45,53 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 /**
+ * POST /api/driver/login
+ * Driver authentication endpoint using Vehicle Registration & 4-Digit Access PIN
+ */
+app.post('/api/driver/login', async (req, res) => {
+  try {
+    const { registration_number, pin } = req.body;
+
+    if (!registration_number || !pin) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Vehicle registration and access PIN are required.' 
+      });
+    }
+
+    const formattedReg = registration_number.trim().toUpperCase();
+    const formattedPin = pin.trim();
+
+    // Verify vehicle registration and PIN match in Supabase
+    const query = `
+      SELECT * FROM vehicles 
+      WHERE UPPER(registration_number) = $1 AND driver_pin = $2;
+    `;
+    const { rows } = await pool.query(query, [formattedReg, formattedPin]);
+
+    if (rows.length === 0) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid vehicle registration or 4-digit driver PIN.' 
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Driver authenticated successfully.',
+      vehicle: rows[0]
+    });
+
+  } catch (error) {
+    console.error('Driver Login Error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Database error during driver authentication.' 
+    });
+  }
+});
+
+/**
  * POST /api/vehicles
  * Registers a vehicle with strict ABC-2006 validation & generates a 4-digit Driver PIN
  */
