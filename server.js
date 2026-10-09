@@ -19,6 +19,9 @@ const pool = new Pool({
 // Format Regex: Exactly 3 uppercase letters, a hyphen, and 4 numbers (e.g. ABC-2006)
 const REGISTRATION_REGEX = /^[A-Z]{3}-\d{4}$/;
 
+// In-memory store for active vehicle telemetry locations
+const liveVehicleLocations = {};
+
 // Helper: Generate a random 4-digit PIN (1000 - 9999)
 function generate4DigitPin() {
   return Math.floor(1000 + Math.random() * 9000).toString();
@@ -46,7 +49,7 @@ app.post('/api/admin/login', (req, res) => {
 
 /**
  * POST /api/driver/login
- * Driver authentication endpoint using Vehicle Registration & 4-Digit Access PIN
+ * Driver authentication using Vehicle Registration & 4-Digit Access PIN
  */
 app.post('/api/driver/login', async (req, res) => {
   try {
@@ -89,6 +92,34 @@ app.post('/api/driver/login', async (req, res) => {
       error: 'Database error during driver authentication.' 
     });
   }
+});
+
+/**
+ * POST /api/driver/telemetry
+ * Receives live lat/lng updates from drivers and updates in-memory telemetry store
+ */
+app.post('/api/driver/telemetry', (req, res) => {
+  const { registration_number, latitude, longitude } = req.body;
+
+  if (registration_number && latitude !== undefined && longitude !== undefined) {
+    const formattedReg = registration_number.trim().toUpperCase();
+    liveVehicleLocations[formattedReg] = {
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      updated_at: new Date()
+    };
+    return res.json({ success: true });
+  }
+
+  return res.status(400).json({ success: false, error: 'Invalid telemetry payload.' });
+});
+
+/**
+ * GET /api/admin/live-locations
+ * Returns active vehicle locations for real-time rendering on the Admin Map
+ */
+app.get('/api/admin/live-locations', (req, res) => {
+  res.json({ success: true, locations: liveVehicleLocations });
 });
 
 /**
