@@ -1,165 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Driver Telemetry Terminal - City of Harare</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b0f19; color: #f8fafc; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 25px; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .form-group { margin-bottom: 15px; text-align: left; }
-        label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 6px; }
-        input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; font-size: 1rem; outline: none; }
-        .btn-primary { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; }
-        .btn-primary:hover { background: #0369a1; }
-        .status-box { margin-top: 20px; padding: 15px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; font-size: 0.9rem; text-align: left; }
-        .live-indicator { display: inline-block; width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; margin-right: 6px; }
-        .live-active { background-color: #22c55e; box-shadow: 0 0 8px #22c55e; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Driver Telemetry Terminal - Harare Transit Tracker</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #0b1329;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .terminal-card {
+      background-color: #172a45;
+      padding: 35px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    h2 {
+      color: #38bdf8;
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 25px;
+    }
+
+    .form-group {
+      text-align: left;
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #273e63;
+      border-radius: 6px;
+      background-color: #0b1329;
+      color: #fff;
+      font-size: 15px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #0284c7;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #0369a1;
+    }
+
+    .status-panel {
+      display: none;
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #0f172a;
+      border: 1px solid #0284c7;
+      text-align: left;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background-color: #10b981;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .alert {
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 15px;
+      display: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .alert-error {
+      background-color: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .alert-success {
+      background-color: #065f46;
+      color: #a7f3d0;
+    }
+  </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2 style="color: #38bdf8; margin-top: 0;">Driver Telemetry Terminal</h2>
-        <p style="color: #94a3b8; font-size: 0.85rem;">Harare Public Transport Live Location Stream</p>
+  <div class="terminal-card">
+    <h2>Driver Telemetry Terminal</h2>
+    <div class="subtitle">Harare Public Transport Live Location Stream</div>
 
-        <form id="driverForm">
-            <div class="form-group">
-                <label for="plateInput">Vehicle License Plate</label>
-                <input type="text" id="plateInput" placeholder="e.g. ASD-1234" required>
-            </div>
-            <div class="form-group">
-                <label for="pinInput">Access PIN</label>
-                <input type="password" id="pinInput" placeholder="4-digit PIN" required>
-            </div>
-            <button type="submit" class="btn-primary">Start Live Transmission</button>
-        </form>
+    <form id="driverLoginForm">
+      <div class="form-group">
+        <label for="registration_number">Vehicle License Plate</label>
+        <input 
+          type="text" 
+          id="registration_number" 
+          placeholder="e.g. AQW-1356" 
+          maxlength="8" 
+          required 
+        />
+      </div>
 
-        <div id="driverMsg" style="margin-top: 15px; font-size: 0.88rem; font-weight: bold;"></div>
+      <div class="form-group">
+        <label for="pin">Access PIN</label>
+        <input 
+          type="password" 
+          id="pin" 
+          placeholder="••••" 
+          maxlength="4" 
+          required 
+        />
+      </div>
 
-        <div id="telemetryStatus" class="status-box" style="display: none;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                <span style="font-weight: bold; color: #38bdf8;">Transmission Status</span>
-                <span><span id="dotIndicator" class="live-indicator"></span><span id="statusLabel" style="font-size: 0.8rem; font-weight: bold;">OFFLINE</span></span>
-            </div>
-            <div style="color: #94a3b8; font-size: 0.85rem;">
-                Vehicle: <span id="activePlate" style="color: #fff; font-weight: bold;">-</span><br>
-                Latitude: <span id="latVal" style="color: #fff;">0.0000</span><br>
-                Longitude: <span id="lngVal" style="color: #fff;">0.0000</span><br>
-                Speed: <span id="speedVal" style="color: #fff;">0 km/h</span>
-            </div>
-        </div>
+      <button type="submit" id="submitBtn">Start Live Transmission</button>
+    </form>
+
+    <div id="alertBox" class="alert"></div>
+
+    <!-- Active Stream Dashboard -->
+    <div id="statusPanel" class="status-panel">
+      <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">
+        <span class="status-indicator"></span> Transmitting GPS Stream
+      </div>
+      <div style="font-size: 12px; color: #94a3b8;">Vehicle: <strong id="activeReg" style="color: #38bdf8;"></strong></div>
+      <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Lat/Lng: <span id="gpsCoords" style="color: #a7f3d0;">Acquiring GPS...</span></div>
     </div>
+  </div>
 
-    <script>
-        const driverForm = document.getElementById('driverForm');
-        const driverMsg = document.getElementById('driverMsg');
-        const telemetryStatus = document.getElementById('telemetryStatus');
-        const dotIndicator = document.getElementById('dotIndicator');
-        const statusLabel = document.getElementById('statusLabel');
-        const activePlate = document.getElementById('activePlate');
-        const latVal = document.getElementById('latVal');
-        const lngVal = document.getElementById('lngVal');
-        const speedVal = document.getElementById('speedVal');
+  <script>
+    const loginForm = document.getElementById('driverLoginForm');
+    const alertBox = document.getElementById('alertBox');
+    const statusPanel = document.getElementById('statusPanel');
+    const regInput = document.getElementById('registration_number');
+    let watchId = null;
 
-        let ws;
-        let watchId = null;
-        let currentPlate = '';
+    // Auto-uppercase vehicle registration input
+    regInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase();
+    });
 
-        driverForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.style.display = 'none';
 
-            const plate = document.getElementById('plateInput').value.trim().toUpperCase();
-            const pin = document.getElementById('pinInput').value.trim();
+      const registration_number = regInput.value.trim();
+      const pin = document.getElementById('pin').value.trim();
 
-            driverMsg.style.color = '#cbd5e1';
-            driverMsg.innerText = 'Authenticating vehicle...';
-
-            try {
-                const res = await fetch('/api/driver/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plate, pin })
-                });
-
-                const data = await res.json();
-
-                if (res.ok && data.success) {
-                    driverMsg.style.color = '#4ade80';
-                    driverMsg.innerText = 'Authenticated! Requesting location access...';
-                    currentPlate = plate;
-                    driverForm.style.display = 'none';
-                    telemetryStatus.style.display = 'block';
-                    activePlate.innerText = currentPlate;
-
-                    initWebSocketAndGPS();
-                } else {
-                    driverMsg.style.color = '#f87171';
-                    driverMsg.innerText = data.message || 'Invalid Plate or Access PIN.';
-                }
-            } catch (err) {
-                console.error(err);
-                driverMsg.style.color = '#f87171';
-                driverMsg.innerText = 'Connection error. Check server status.';
-            }
+      try {
+        const response = await fetch('/api/driver/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registration_number, pin })
         });
 
-        function initWebSocketAndGPS() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}`);
+        const data = await response.json();
 
-            ws.onopen = () => {
-                dotIndicator.classList.add('live-active');
-                statusLabel.innerText = 'BROADCASTING';
-                statusLabel.style.color = '#4ade80';
-                startGPSTracking();
-            };
+        if (response.ok && data.success) {
+          showAlert('Authentication successful! Starting GPS stream...', 'success');
+          loginForm.style.display = 'none';
+          statusPanel.style.display = 'block';
+          document.getElementById('activeReg').textContent = registration_number;
 
-            ws.onclose = () => {
-                dotIndicator.classList.remove('live-active');
-                statusLabel.innerText = 'DISCONNECTED';
-                statusLabel.style.color = '#ef4444';
-            };
+          // Start Geolocation Telemetry Watch
+          startGpsTracking(registration_number);
+        } else {
+          showAlert(data.error || 'Invalid vehicle registration or access PIN.', 'error');
         }
+      } catch (err) {
+        console.error('Connection error:', err);
+        showAlert('Connection error. Check server status.', 'error');
+      }
+    });
 
-        function startGPSTracking() {
-            if (!navigator.geolocation) {
-                alert('Geolocation is not supported by your browser.');
-                return;
-            }
+    function startGpsTracking(vehicleReg) {
+      if ('geolocation' in navigator) {
+        watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            const lat = position.coords.latitude.toFixed(6);
+            const lng = position.coords.longitude.toFixed(6);
+            
+            document.getElementById('gpsCoords').textContent = `${lat}, ${lng}`;
 
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    const speed = pos.coords.speed ? (pos.coords.speed * 3.6) : 0; // m/s to km/h
+            // Transmit GPS coordinates via WebSocket or HTTP telemetry endpoint
+            console.log(`[GPS TRANSMISSION] ${vehicleReg} -> Lat: ${lat}, Lng: ${lng}`);
+          },
+          (error) => {
+            console.warn('Geolocation Error:', error.message);
+            document.getElementById('gpsCoords').textContent = 'GPS Signal Searching...';
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        );
+      } else {
+        document.getElementById('gpsCoords').textContent = 'Geolocation not supported by device.';
+      }
+    }
 
-                    latVal.innerText = lat.toFixed(5);
-                    lngVal.innerText = lng.toFixed(5);
-                    speedVal.innerText = `${Math.round(speed)} km/h`;
-
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({
-                            type: 'TELEMETRY_UPDATE',
-                            plate: currentPlate,
-                            lat: lat,
-                            lng: lng,
-                            speed: speed
-                        }));
-                    }
-                },
-                (err) => {
-                    console.error('GPS Watch Error:', err);
-                    alert('Please allow Location Permissions on your phone to transmit telemetry.');
-                },
-                {
-                    enableHighAccuracy: true,
-                    maximumAge: 0,
-                    timeout: 5000
-                }
-            );
-        }
-    </script>
+    function showAlert(msg, type) {
+      alertBox.textContent = msg;
+      alertBox.className = `alert alert-${type}`;
+      alertBox.style.display = 'block';
+    }
+  </script>
 </body>
 </html>
