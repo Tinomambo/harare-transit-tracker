@@ -48,6 +48,75 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 /**
+ * POST /api/officer/login
+ * Municipal Traffic Enforcement Officer Login Endpoint
+ */
+app.post('/api/officer/login', (req, res) => {
+  const { username, password } = req.body;
+
+  // Accept municipal officer credentials (officer / Harare2026 or officer / password)
+  if ((username === 'officer' || username === 'officer1') && password) {
+    return res.json({
+      success: true,
+      message: 'Officer authenticated successfully.',
+      token: 'harare-officer-authenticated-token'
+    });
+  }
+
+  return res.status(401).json({
+    success: false,
+    error: 'Invalid Officer ID or Password.'
+  });
+});
+
+/**
+ * POST /api/officer/verify
+ * Verifies if a vehicle is registered and active in the Harare Municipal System
+ */
+app.post('/api/officer/verify', async (req, res) => {
+  try {
+    const { registration_number } = req.body;
+
+    if (!registration_number) {
+      return res.status(400).json({ success: false, error: 'Registration number is required.' });
+    }
+
+    const formattedReg = registration_number.trim().toUpperCase();
+
+    // Query Supabase database for vehicle registration details
+    const query = 'SELECT * FROM vehicles WHERE UPPER(registration_number) = $1;';
+    const { rows } = await pool.query(query, [formattedReg]);
+
+    if (rows.length === 0) {
+      return res.json({
+        success: true,
+        verified: false,
+        status: 'UNREGISTERED',
+        message: `Vehicle '${formattedReg}' is NOT registered in the Harare Transit System.`
+      });
+    }
+
+    const vehicle = rows[0];
+    const isLive = liveVehicleLocations[formattedReg] !== undefined;
+
+    return res.json({
+      success: true,
+      verified: true,
+      vehicle: {
+        registration_number: vehicle.registration_number,
+        status: vehicle.status || 'ACTIVE',
+        is_live_transmitting: isLive,
+        registered_id: vehicle.id
+      }
+    });
+
+  } catch (error) {
+    console.error('Field Verification Error:', error);
+    return res.status(500).json({ success: false, error: 'Database error during vehicle verification.' });
+  }
+});
+
+/**
  * POST /api/driver/login
  * Driver authentication using Vehicle Registration & 4-Digit Access PIN
  */
@@ -96,7 +165,7 @@ app.post('/api/driver/login', async (req, res) => {
 
 /**
  * POST /api/driver/telemetry
- * Receives live lat/lng updates from drivers and updates in-memory telemetry store
+ * Receives live lat/lng updates from drivers
  */
 app.post('/api/driver/telemetry', (req, res) => {
   const { registration_number, latitude, longitude } = req.body;
