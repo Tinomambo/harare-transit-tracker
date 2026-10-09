@@ -1,344 +1,289 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>City of Harare - Traffic Enforcement Portal</title>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body {
-            background-color: #0b0f19;
-            color: #f8fafc;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Municipal Officer Field Verification - Harare Transit</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-        .login-card {
-            background: #1e293b;
-            border: 1px solid #0284c7;
-            border-radius: 12px;
-            padding: 35px 30px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
+    body {
+      background-color: #0b1329;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
 
-        .badge {
-            display: inline-block;
-            background: rgba(2, 132, 199, 0.2);
-            color: #38bdf8;
-            font-size: 0.75rem;
-            font-weight: bold;
-            letter-spacing: 1px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            text-transform: uppercase;
-            margin-bottom: 15px;
-            border: 1px solid rgba(56, 189, 248, 0.3);
-        }
+    .card {
+      background-color: #172a45;
+      padding: 35px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      border: 1px solid #273e63;
+    }
 
-        h2 { margin: 0 0 5px 0; font-size: 1.6rem; color: #ffffff; text-align: center; }
-        .subtitle { color: #94a3b8; font-size: 0.88rem; text-align: center; margin-bottom: 25px; }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background-color: #0284c722;
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
 
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 8px; }
-        input {
-            width: 100%;
-            padding: 12px 15px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 6px;
-            color: #ffffff;
-            font-size: 0.95rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        input:focus { border-color: #38bdf8; }
+    h2 {
+      color: #ffffff;
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
 
-        .btn-submit {
-            width: 100%;
-            padding: 12px;
-            background: #0284c7;
-            color: #ffffff;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background 0.2s;
-            margin-top: 10px;
-        }
-        .btn-submit:hover { background: #0369a1; }
+    .subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 25px;
+    }
 
-        #messageBox {
-            margin-top: 18px;
-            text-align: center;
-            font-size: 0.88rem;
-            font-weight: 500;
-            min-height: 20px;
-        }
+    .form-group {
+      text-align: left;
+      margin-bottom: 18px;
+    }
 
-        #dashboardContent {
-            display: none;
-            width: 100%;
-            max-width: 600px;
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
+    label {
+      display: block;
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
 
-        .search-box {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            margin-bottom: 25px;
-        }
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #273e63;
+      border-radius: 6px;
+      background-color: #0b1329;
+      color: #fff;
+      font-size: 15px;
+    }
 
-        .search-box input {
-            flex: 1;
-            font-size: 1.1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: bold;
-        }
+    input:focus {
+      outline: none;
+      border-color: #0284c7;
+    }
 
-        .search-box button {
-            padding: 12px 24px;
-            background: #0284c7;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .search-box button:hover { background: #0369a1; }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background-color 0.2s ease;
+    }
 
-        .result-card {
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            padding: 20px;
-            display: none;
-        }
+    button:hover {
+      background-color: #0369a1;
+    }
 
-        .status-container {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
+    /* Verification Portal Section */
+    #verificationSection {
+      display: none;
+    }
 
-        .status-pill {
-            display: inline-block;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        .status-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
-        .status-inactive { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+    .result-card {
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 8px;
+      text-align: left;
+      display: none;
+    }
 
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #1e293b;
-            font-size: 0.9rem;
-        }
-        .data-row:last-child { border-bottom: none; }
-        .data-label { color: #94a3b8; }
-        .data-value { color: #ffffff; font-weight: 600; }
-    </style>
+    .result-valid {
+      background-color: #065f4633;
+      border: 1px solid #10b981;
+      color: #a7f3d0;
+    }
+
+    .result-invalid {
+      background-color: #7f1d1d33;
+      border: 1px solid #ef4444;
+      color: #fecaca;
+    }
+
+    .alert {
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 15px;
+      display: none;
+      font-size: 14px;
+    }
+
+    .alert-error {
+      background-color: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .alert-success {
+      background-color: #065f46;
+      color: #a7f3d0;
+    }
+  </style>
 </head>
 <body>
 
-    <div id="loginContainer" class="login-card">
-        <div style="text-align: center;"><span class="badge">Field Verification</span></div>
-        <h2>Municipal Officer Login</h2>
-        <div class="subtitle">Traffic Enforcement Operations</div>
+  <!-- 1. OFFICER LOGIN SCREEN -->
+  <div id="loginSection" class="card">
+    <div class="badge">Field Verification</div>
+    <h2>Municipal Officer Login</h2>
+    <div class="subtitle">Traffic Enforcement Operations</div>
 
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="username">Officer ID / Username</label>
-                <input type="text" id="username" placeholder="officer" required autocomplete="username">
-            </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
-            </div>
-            <button type="submit" class="btn-submit">Access Verification Portal</button>
-        </form>
+    <form id="officerLoginForm">
+      <div class="form-group">
+        <label for="username">Officer ID / Username</label>
+        <input type="text" id="username" placeholder="e.g. officer" required />
+      </div>
 
-        <div id="messageBox"></div>
-    </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" required />
+      </div>
 
-    <div id="dashboardContent">
-        <h2 style="text-align: left; color: #38bdf8; margin: 0;">Vehicle Verification Terminal</h2>
-        <p style="color: #94a3b8; margin-top: 5px; font-size: 0.9rem;">Verify license plate registration and live telemetry status within CBD zones.</p>
-        
-        <div class="search-box">
-            <input type="text" id="plateSearch" placeholder="e.g. ASW-9900" autocomplete="off">
-            <button type="button" id="btnVerify">Verify Plate</button>
-        </div>
+      <button type="submit">Access Verification Portal</button>
+    </form>
 
-        <div id="resultCard" class="result-card">
-            <div class="status-container">
-                <div id="regBadge" class="status-pill"></div>
-                <div id="telemetryBadge" class="status-pill"></div>
-            </div>
+    <div id="loginAlert" class="alert alert-error"></div>
+  </div>
 
-            <div class="data-row">
-                <span class="data-label">Target Plate:</span>
-                <span id="resPlate" class="data-value">---</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label">System Registration:</span>
-                <span id="resRegistration" class="data-value">---</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label">Telemetry Status:</span>
-                <span id="resTelemetry" class="data-value">---</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label">Current Speed:</span>
-                <span id="resSpeed" class="data-value">---</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label">Coordinates:</span>
-                <span id="resCoords" class="data-value">---</span>
-            </div>
-            <div class="data-row">
-                <span class="data-label">Last Transmission:</span>
-                <span id="resTime" class="data-value">---</span>
-            </div>
-        </div>
-    </div>
+  <!-- 2. FIELD VERIFICATION TERMINAL -->
+  <div id="verificationSection" class="card">
+    <div class="badge">City of Harare</div>
+    <h2>Vehicle Compliance Scanner</h2>
+    <div class="subtitle">Enter license plate to verify registration status</div>
 
-    <script>
-        const loginForm = document.getElementById('loginForm');
-        const messageBox = document.getElementById('messageBox');
-        const loginContainer = document.getElementById('loginContainer');
-        const dashboardContent = document.getElementById('dashboardContent');
+    <form id="verifyForm">
+      <div class="form-group">
+        <label for="registration_number">Target License Plate</label>
+        <input 
+          type="text" 
+          id="registration_number" 
+          placeholder="e.g. ABC-2006" 
+          maxlength="8" 
+          required 
+        />
+      </div>
 
-        const plateSearch = document.getElementById('plateSearch');
-        const btnVerify = document.getElementById('btnVerify');
-        const resultCard = document.getElementById('resultCard');
+      <button type="submit">Verify Vehicle Status</button>
+    </form>
 
-        let activeFleet = new Map();
-        let ws = null;
+    <!-- Verification Output Result -->
+    <div id="resultBox" class="result-card"></div>
 
-        // Login Handler
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+    <button onclick="logout()" style="background-color: #334155; margin-top: 20px;">Logout Officer</button>
+  </div>
 
-            messageBox.style.color = '#cbd5e1';
-            messageBox.innerText = 'Authenticating...';
+  <script>
+    const loginForm = document.getElementById('officerLoginForm');
+    const verifyForm = document.getElementById('verifyForm');
+    const loginAlert = document.getElementById('loginAlert');
+    const resultBox = document.getElementById('resultBox');
+    const regInput = document.getElementById('registration_number');
 
-            try {
-                const response = await fetch('/api/enforcement/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
+    // Auto-uppercase inputs
+    regInput.addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase());
 
-                const data = await response.json();
+    // Officer Login Event
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginAlert.style.display = 'none';
 
-                if (response.ok && data.success) {
-                    loginContainer.style.display = 'none';
-                    dashboardContent.style.display = 'block';
-                    initWebSocket();
-                } else {
-                    messageBox.style.color = '#f87171';
-                    messageBox.innerText = data.message || 'Invalid enforcement credentials.';
-                }
-            } catch (err) {
-                console.error('Login error:', err);
-                messageBox.style.color = '#f87171';
-                messageBox.innerText = 'Connection error. Check server status.';
-            }
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      try {
+        const response = await fetch('/api/officer/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
         });
 
-        // Initialize WebSocket for Live Telemetry
-        function initWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}`);
+        const data = await response.json();
 
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'FLEET_UPDATE' && Array.isArray(data.vehicles)) {
-                        activeFleet = new Map(data.vehicles);
-                    }
-                } catch (err) {
-                    console.error('WebSocket parse error:', err);
-                }
-            };
+        if (response.ok && data.success) {
+          document.getElementById('loginSection').style.display = 'none';
+          document.getElementById('verificationSection').style.display = 'block';
+        } else {
+          loginAlert.textContent = data.error || 'Invalid Officer Credentials.';
+          loginAlert.style.display = 'block';
         }
+      } catch (err) {
+        loginAlert.textContent = 'Connection error. Check server status.';
+        loginAlert.style.display = 'block';
+      }
+    });
 
-        // Verification Search Logic
-        btnVerify.addEventListener('click', performVerification);
-        plateSearch.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') performVerification();
+    // Vehicle License Verification Event
+    verifyForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      resultBox.style.display = 'none';
+
+      const registration_number = regInput.value.trim();
+
+      try {
+        const response = await fetch('/api/officer/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registration_number })
         });
 
-        async function performVerification() {
-            const query = plateSearch.value.trim().toUpperCase();
-            if (!query) return;
+        const data = await response.json();
 
-            resultCard.style.display = 'block';
-            document.getElementById('resPlate').innerText = query;
-
-            // 1. Fetch persistent registration status from Express server
-            try {
-                const regRes = await fetch(`/api/enforcement/check-registration/${encodeURIComponent(query)}`);
-                const regData = await regRes.json();
-
-                if (regData.registered) {
-                    document.getElementById('regBadge').className = 'status-pill status-active';
-                    document.getElementById('regBadge').innerText = '✓ REGISTERED VEHICLE';
-                    document.getElementById('resRegistration').innerText = 'Authorized in Database';
-                } else {
-                    document.getElementById('regBadge').className = 'status-pill status-inactive';
-                    document.getElementById('regBadge').innerText = '✕ UNREGISTERED';
-                    document.getElementById('resRegistration').innerText = 'Not Found in System';
-                }
-            } catch (err) {
-                console.error('Error fetching registration status:', err);
-                document.getElementById('resRegistration').innerText = 'Error checking database';
-            }
-
-            // 2. Check live telemetry map
-            const activeData = activeFleet.get(query);
-
-            if (activeData) {
-                document.getElementById('telemetryBadge').className = 'status-pill status-active';
-                document.getElementById('telemetryBadge').innerText = '● LIVE TELEMETRY STREAM';
-                document.getElementById('resTelemetry').innerText = 'Broadcasting Live GPS';
-                document.getElementById('resSpeed').innerText = `${Math.round(activeData.speed || 0)} km/h`;
-                document.getElementById('resCoords').innerText = `${activeData.lat.toFixed(5)}, ${activeData.lng.toFixed(5)}`;
-                
-                const lastTime = new Date(activeData.timestamp).toLocaleTimeString();
-                document.getElementById('resTime').innerText = lastTime;
-            } else {
-                document.getElementById('telemetryBadge').className = 'status-pill status-inactive';
-                document.getElementById('telemetryBadge').innerText = '▲ TELEMETRY OFF-LINE';
-                document.getElementById('resTelemetry').innerText = 'No Active Signal';
-                document.getElementById('resSpeed').innerText = 'N/A';
-                document.getElementById('resCoords').innerText = 'N/A';
-                document.getElementById('resTime').innerText = 'No active transmission';
-            }
+        if (response.ok && data.success) {
+          if (data.verified) {
+            resultBox.className = 'result-card result-valid';
+            resultBox.innerHTML = `
+              <div style="font-weight: bold; font-size: 16px; margin-bottom: 6px;">✓ COMPLIANT VEHICLE</div>
+              <div>Registration: <strong>${data.vehicle.registration_number}</strong></div>
+              <div>Status: <strong>${data.vehicle.status}</strong></div>
+              <div>Live Transmission: <strong>${data.vehicle.is_live_transmitting ? 'ACTIVE' : 'OFFLINE'}</strong></div>
+            `;
+          } else {
+            resultBox.className = 'result-card result-invalid';
+            resultBox.innerHTML = `
+              <div style="font-weight: bold; font-size: 16px; margin-bottom: 6px;">✕ NON-COMPLIANT / UNREGISTERED</div>
+              <div>${data.message}</div>
+            `;
+          }
+          resultBox.style.display = 'block';
+        } else {
+          alert('Verification request failed.');
         }
-    </script>
+      } catch (err) {
+        alert('Server communication error.');
+      }
+    });
+
+    function logout() {
+      location.reload();
+    }
+  </script>
 </body>
 </html>
