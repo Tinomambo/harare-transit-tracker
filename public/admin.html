@@ -350,6 +350,7 @@
 
   <script>
     let map;
+    let mapMarkers = {};
     const REG_REGEX = /^[A-Z]{3}-\d{4}$/;
 
     // Automatically convert registration input to uppercase as the user types
@@ -436,14 +437,47 @@
       }
     });
 
-    // Initialize Map
+    // Initialize Map and Start Real-Time Live Vehicle Polling
     function initMap() {
       if (map) return;
+      
+      // Center map on Harare CBD
       map = L.map('harareMap').setView([-17.8292, 31.0522], 12);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
+
+      // Poll active driver positions every 2.5 seconds
+      setInterval(updateMapMarkers, 2500);
+      updateMapMarkers();
+    }
+
+    // Dynamic marker update function for active vehicles
+    async function updateMapMarkers() {
+      try {
+        const res = await fetch('/api/admin/live-locations');
+        const data = await res.json();
+
+        if (data.success && data.locations) {
+          Object.keys(data.locations).forEach(regNum => {
+            const loc = data.locations[regNum];
+
+            if (mapMarkers[regNum]) {
+              // Smoothly update existing bus marker position
+              mapMarkers[regNum].setLatLng([loc.latitude, loc.longitude]);
+            } else {
+              // Create new bus marker on the Harare map
+              const marker = L.marker([loc.latitude, loc.longitude])
+                .addTo(map)
+                .bindPopup(`<b>Vehicle: ${regNum}</b><br>Status: Live Transmitting`);
+              mapMarkers[regNum] = marker;
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching live map markers:', err);
+      }
     }
 
     // Load registered vehicles into bottom table safely
@@ -456,7 +490,6 @@
 
         if (res.ok && data.success && Array.isArray(data.vehicles) && data.vehicles.length > 0) {
           tbody.innerHTML = data.vehicles.map((v, index) => {
-            // Flexible fallbacks to support various Supabase column names
             const displayId = v.id || v.vehicle_id || (index + 1);
             const regNum = v.registration_number || v.reg_number || 'N/A';
             const pin = v.driver_pin || v.pin || 'N/A';
