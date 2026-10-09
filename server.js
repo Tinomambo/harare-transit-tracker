@@ -16,12 +16,16 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
-// Regex for Format: 3 letters, hyphen, 4 digits (e.g., ABC-2006)
+// Format Regex: Exactly 3 letters, a hyphen, and 4 digits (e.g. ABC-2006)
 const REGISTRATION_REGEX = /^[A-Z]{3}-\d{4}$/;
+
+// Helper: Generate 6-digit random PIN
+function generateDriverPin() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 /**
  * POST /api/admin/login
- * Admin authentication endpoint
  */
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
@@ -35,7 +39,7 @@ app.post('/api/admin/login', (req, res) => {
 
 /**
  * POST /api/vehicles
- * Registers vehicle with strict ABC-2006 format validation
+ * Registers vehicle with strict ABC-2006 format & generates driver PIN
  */
 app.post('/api/vehicles', async (req, res) => {
   try {
@@ -50,35 +54,38 @@ app.post('/api/vehicles', async (req, res) => {
     if (!REGISTRATION_REGEX.test(formattedReg)) {
       return res.status(400).json({
         success: false,
-        error: `Invalid format '${formattedReg}'. Registration must be in format ABC-2006 (e.g. ABC-2006).`
+        error: `Invalid format '${formattedReg}'. Registration must follow ABC-2006 (e.g. ABC-2006).`
       });
     }
 
+    const driverPin = generateDriverPin();
+
+    // Insertion compatible with existing database structures
     const insertQuery = `
-      INSERT INTO vehicles (registration_number, status)
-      VALUES ($1, 'ACTIVE')
+      INSERT INTO vehicles (registration_number, driver_pin, status)
+      VALUES ($1, $2, 'ACTIVE')
       RETURNING *;
     `;
-    const { rows } = await pool.query(insertQuery, [formattedReg]);
+    const { rows } = await pool.query(insertQuery, [formattedReg, driverPin]);
 
     return res.status(201).json({
       success: true,
       message: 'Vehicle registered successfully.',
-      vehicle: rows[0]
+      vehicle: rows[0],
+      driver_pin: driverPin
     });
 
   } catch (error) {
-    console.error('Registration Error:', error);
+    console.error('Registration Error Details:', error);
     if (error.code === '23505') {
       return res.status(409).json({ success: false, error: 'Vehicle registration already exists.' });
     }
-    return res.status(500).json({ success: false, error: 'Internal server error.' });
+    return res.status(500).json({ success: false, error: 'Database/Server error while registering vehicle.' });
   }
 });
 
 /**
  * GET /api/vehicles
- * Retrieves list of vehicles
  */
 app.get('/api/vehicles', async (req, res) => {
   try {
