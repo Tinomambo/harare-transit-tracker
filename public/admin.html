@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Harare Transit Tracker - Admin Portal</title>
   
-  <!-- Leaflet CSS for Map Rendering -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
@@ -26,7 +25,6 @@
       padding: 20px;
     }
 
-    /* --- LOGIN OVERLAY --- */
     #loginSection {
       display: flex;
       justify-content: center;
@@ -50,7 +48,6 @@
       color: #38bdf8;
     }
 
-    /* --- ADMIN DASHBOARD --- */
     #dashboardSection {
       display: none;
       width: 100%;
@@ -68,7 +65,6 @@
       border-radius: 10px;
     }
 
-    /* TOP CARD: Vehicle Registration */
     .register-card {
       background-color: #172a45;
       padding: 25px;
@@ -143,7 +139,22 @@
       cursor: pointer;
     }
 
-    /* MIDDLE: MAP SECTION */
+    .pin-display-box {
+      margin-top: 15px;
+      padding: 15px;
+      background-color: #0284c722;
+      border: 1px solid #0284c7;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .pin-code {
+      font-size: 22px;
+      font-weight: bold;
+      color: #38bdf8;
+      letter-spacing: 2px;
+    }
+
     .map-card {
       background-color: #172a45;
       padding: 15px;
@@ -162,7 +173,6 @@
       border-radius: 8px;
     }
 
-    /* BOTTOM: TABLE SECTION */
     .table-card {
       background-color: #172a45;
       padding: 20px;
@@ -204,6 +214,16 @@
       color: #a7f3d0;
     }
 
+    .pin-badge {
+      font-family: monospace;
+      background-color: #0f172a;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      color: #f59e0b;
+      font-weight: bold;
+    }
+
     .alert {
       padding: 10px;
       border-radius: 6px;
@@ -218,7 +238,7 @@
 </head>
 <body>
 
-  <!-- 1. LOGIN SECTION -->
+  <!-- LOGIN SECTION -->
   <div id="loginSection">
     <div class="login-card">
       <h2>City of Harare Admin</h2>
@@ -237,7 +257,7 @@
     </div>
   </div>
 
-  <!-- 2. MAIN DASHBOARD SECTION -->
+  <!-- MAIN DASHBOARD -->
   <div id="dashboardSection">
     
     <div class="header-bar">
@@ -245,9 +265,9 @@
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
 
-    <!-- TOP SECTION: REGISTER VEHICLE FORM -->
+    <!-- TOP: REGISTER VEHICLE FORM -->
     <div class="register-card">
-      <h3>Register Vehicle</h3>
+      <h3>Register Vehicle & Generate Driver PIN</h3>
       <form id="registerForm">
         <div class="form-row">
           <div class="form-group">
@@ -264,16 +284,24 @@
           <button type="submit" class="btn-primary">Register Vehicle</button>
         </div>
       </form>
+      
       <div id="regAlert" class="alert"></div>
+
+      <!-- PIN GENERATED BANNER -->
+      <div id="pinBox" class="pin-display-box">
+        Vehicle Registered! Assigned Driver Access PIN: 
+        <span id="generatedPin" class="pin-code">------</span>
+        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Provide this 6-digit PIN to the driver for mobile tracking access.</div>
+      </div>
     </div>
 
-    <!-- MIDDLE SECTION: HARARE LIVE MAP -->
+    <!-- MIDDLE: HARARE MAP -->
     <div class="map-card">
       <h3>City of Harare Live Transit Map</h3>
       <div id="harareMap"></div>
     </div>
 
-    <!-- BOTTOM SECTION: REGISTERED VEHICLES TABLE -->
+    <!-- BOTTOM: REGISTERED VEHICLES TABLE -->
     <div class="table-card">
       <h3>Registered Transit Vehicles</h3>
       <table>
@@ -281,12 +309,13 @@
           <tr>
             <th>ID</th>
             <th>Registration Number</th>
+            <th>Driver Access PIN</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody id="vehicleTableBody">
           <tr>
-            <td colspan="3" style="text-align: center; color: #64748b;">Loading registered vehicles...</td>
+            <td colspan="4" style="text-align: center; color: #64748b;">Loading registered vehicles...</td>
           </tr>
         </tbody>
       </table>
@@ -294,19 +323,17 @@
 
   </div>
 
-  <!-- Leaflet Map JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
     let map;
     const REG_REGEX = /^[A-Z]{3}-\d{4}$/;
 
-    // Dynamic Uppercase conversion as user types
     document.getElementById('registration_number').addEventListener('input', (e) => {
       e.target.value = e.target.value.toUpperCase();
     });
 
-    // Handle Login
+    // Login logic
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const user = document.getElementById('username').value;
@@ -336,13 +363,15 @@
       }
     });
 
-    // Handle Vehicle Registration
+    // Vehicle Registration logic
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const regInput = document.getElementById('registration_number').value.trim();
       const regAlert = document.getElementById('regAlert');
+      const pinBox = document.getElementById('pinBox');
 
       regAlert.style.display = 'none';
+      pinBox.style.display = 'none';
 
       if (!REG_REGEX.test(regInput)) {
         regAlert.textContent = 'Invalid Format! Must be strictly 3 letters, hyphen, 4 numbers (e.g. ABC-2006).';
@@ -363,8 +392,13 @@
           regAlert.textContent = 'Vehicle ' + regInput + ' registered successfully!';
           regAlert.className = 'alert alert-success';
           regAlert.style.display = 'block';
+
+          // Display Generated PIN
+          document.getElementById('generatedPin').textContent = data.driver_pin || data.vehicle.driver_pin;
+          pinBox.style.display = 'block';
+
           document.getElementById('registration_number').value = '';
-          loadVehicles(); // Refresh registered table
+          loadVehicles();
         } else {
           regAlert.textContent = data.error || 'Registration failed.';
           regAlert.className = 'alert alert-error';
@@ -377,10 +411,8 @@
       }
     });
 
-    // Initialize Harare Map
     function initMap() {
       if (map) return;
-      // Centered on Harare CBD coordinates [-17.8292, 31.0522]
       map = L.map('harareMap').setView([-17.8292, 31.0522], 12);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -388,7 +420,6 @@
       }).addTo(map);
     }
 
-    // Load registered vehicles into bottom table
     async function loadVehicles() {
       try {
         const res = await fetch('/api/vehicles');
@@ -400,11 +431,12 @@
             <tr>
               <td>${v.id}</td>
               <td><strong>${v.registration_number}</strong></td>
+              <td><span class="pin-badge">${v.driver_pin || 'N/A'}</span></td>
               <td><span class="status-badge">${v.status || 'ACTIVE'}</span></td>
             </tr>
           `).join('');
         } else {
-          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">No vehicles registered yet.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No vehicles registered yet.</td></tr>';
         }
       } catch (err) {
         console.error('Failed to load table:', err);
