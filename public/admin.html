@@ -3,49 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Harare Transit Tracker - Vehicle Registration</title>
+  <title>Harare Transit Tracker - Admin Portal</title>
+  
+  <!-- Leaflet CSS for Map Rendering -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
     body {
-      background-color: #0f172a;
+      background-color: #0b1329;
       color: #f8fafc;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       padding: 20px;
     }
 
-    .card {
-      background-color: #1e293b;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    /* --- LOGIN OVERLAY --- */
+    #loginSection {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       width: 100%;
-      max-width: 450px;
+      height: 80vh;
     }
 
-    h2 {
-      margin-bottom: 20px;
-      color: #38bdf8;
+    .login-card {
+      background-color: #172a45;
+      padding: 35px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      width: 100%;
+      max-width: 400px;
       text-align: center;
     }
 
+    .login-card h2 {
+      margin-bottom: 20px;
+      color: #38bdf8;
+    }
+
+    /* --- ADMIN DASHBOARD --- */
+    #dashboardSection {
+      display: none;
+      width: 100%;
+      max-width: 1100px;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #172a45;
+      padding: 15px 25px;
+      border-radius: 10px;
+    }
+
+    /* TOP CARD: Vehicle Registration */
+    .register-card {
+      background-color: #172a45;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    .register-card h3 {
+      color: #38bdf8;
+      margin-bottom: 15px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 15px;
+      align-items: flex-end;
+    }
+
     .form-group {
-      margin-bottom: 18px;
+      flex: 1;
     }
 
     label {
       display: block;
-      margin-bottom: 6px;
-      font-size: 14px;
+      font-size: 13px;
       color: #94a3b8;
+      margin-bottom: 6px;
     }
 
     input {
@@ -53,7 +103,7 @@
       padding: 12px;
       border: 1px solid #334155;
       border-radius: 6px;
-      background-color: #0f172a;
+      background-color: #0b1329;
       color: #fff;
       font-size: 15px;
     }
@@ -66,143 +116,304 @@
     .format-hint {
       font-size: 12px;
       color: #64748b;
-      margin-top: 4px;
+      margin-top: 5px;
     }
 
-    button {
-      width: 100%;
-      padding: 12px;
+    button.btn-primary {
+      padding: 12px 24px;
       background-color: #0284c7;
       color: white;
       border: none;
       border-radius: 6px;
-      font-size: 16px;
       font-weight: bold;
       cursor: pointer;
-      transition: background-color 0.2s ease;
+      height: 45px;
     }
 
-    button:hover {
+    button.btn-primary:hover {
       background-color: #0369a1;
     }
 
-    .alert {
-      padding: 12px;
+    button.btn-logout {
+      background-color: #ef4444;
+      padding: 8px 16px;
+      border: none;
       border-radius: 6px;
-      margin-top: 15px;
-      display: none;
-      font-size: 14px;
-      text-align: center;
+      color: white;
+      cursor: pointer;
     }
 
-    .alert-success {
+    /* MIDDLE: MAP SECTION */
+    .map-card {
+      background-color: #172a45;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    .map-card h3 {
+      color: #38bdf8;
+      margin-bottom: 12px;
+    }
+
+    #harareMap {
+      height: 400px;
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    /* BOTTOM: TABLE SECTION */
+    .table-card {
+      background-color: #172a45;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    .table-card h3 {
+      color: #38bdf8;
+      margin-bottom: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #273e63;
+    }
+
+    th {
+      background-color: #0b1329;
+      color: #38bdf8;
+    }
+
+    tr:hover {
+      background-color: #1e3a5f;
+    }
+
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
       background-color: #065f46;
       color: #a7f3d0;
     }
 
-    .alert-error {
-      background-color: #991b1b;
-      color: #fecaca;
+    .alert {
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      display: none;
+      font-size: 14px;
     }
+
+    .alert-error { background-color: #991b1b; color: #fecaca; }
+    .alert-success { background-color: #065f46; color: #a7f3d0; }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>Register Vehicle</h2>
-    
-    <form id="vehicleForm" novalidate>
-      <div class="form-group">
-        <label for="registration_number">Vehicle Registration Number *</label>
-        <input 
-          type="text" 
-          id="registration_number" 
-          name="registration_number" 
-          placeholder="e.g. ABC-2009" 
-          maxlength="8" 
-          required
-        />
-        <div class="format-hint">Format must be strictly 3 letters, a hyphen, and 4 numbers (e.g. ABC-2009)</div>
-      </div>
-
-      <div class="form-group">
-        <label for="capacity">Passenger Capacity</label>
-        <input type="number" id="capacity" name="capacity" placeholder="e.g. 18" min="1" />
-      </div>
-
-      <div class="form-group">
-        <label for="driver_name">Assigned Driver Name</label>
-        <input type="text" id="driver_name" name="driver_name" placeholder="Driver Full Name" />
-      </div>
-
-      <button type="submit">Submit Registration</button>
-    </form>
-
-    <div id="alertBox" class="alert"></div>
+  <!-- 1. LOGIN SECTION -->
+  <div id="loginSection">
+    <div class="login-card">
+      <h2>City of Harare Admin</h2>
+      <form id="loginForm">
+        <div style="margin-bottom: 15px; text-align: left;">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="admin" required />
+        </div>
+        <div style="margin-bottom: 20px; text-align: left;">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn-primary" style="width: 100%;">Unlock Admin Dashboard</button>
+      </form>
+      <div id="loginAlert" class="alert alert-error"></div>
+    </div>
   </div>
 
-  <script>
-    const form = document.getElementById('vehicleForm');
-    const alertBox = document.getElementById('alertBox');
-    const regInput = document.getElementById('registration_number');
+  <!-- 2. MAIN DASHBOARD SECTION -->
+  <div id="dashboardSection">
+    
+    <div class="header-bar">
+      <h2>Harare Public Transit Monitoring Dashboard</h2>
+      <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
 
-    // Auto-uppercase input value dynamically as the user types
-    regInput.addEventListener('input', (e) => {
+    <!-- TOP SECTION: REGISTER VEHICLE FORM -->
+    <div class="register-card">
+      <h3>Register Vehicle</h3>
+      <form id="registerForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="registration_number">Vehicle Registration Number *</label>
+            <input 
+              type="text" 
+              id="registration_number" 
+              placeholder="e.g. ABC-2006" 
+              maxlength="8" 
+              required 
+            />
+            <div class="format-hint">Format must be strictly 3 letters, a hyphen, and 4 numbers (e.g. ABC-2006)</div>
+          </div>
+          <button type="submit" class="btn-primary">Register Vehicle</button>
+        </div>
+      </form>
+      <div id="regAlert" class="alert"></div>
+    </div>
+
+    <!-- MIDDLE SECTION: HARARE LIVE MAP -->
+    <div class="map-card">
+      <h3>City of Harare Live Transit Map</h3>
+      <div id="harareMap"></div>
+    </div>
+
+    <!-- BOTTOM SECTION: REGISTERED VEHICLES TABLE -->
+    <div class="table-card">
+      <h3>Registered Transit Vehicles</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Registration Number</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="vehicleTableBody">
+          <tr>
+            <td colspan="3" style="text-align: center; color: #64748b;">Loading registered vehicles...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    let map;
+    const REG_REGEX = /^[A-Z]{3}-\d{4}$/;
+
+    // Dynamic Uppercase conversion as user types
+    document.getElementById('registration_number').addEventListener('input', (e) => {
       e.target.value = e.target.value.toUpperCase();
     });
 
-    form.addEventListener('submit', async (e) => {
+    // Handle Login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
-      // Clear alert box
-      alertBox.style.display = 'none';
-      alertBox.className = 'alert';
+      const user = document.getElementById('username').value;
+      const pass = document.getElementById('password').value;
+      const loginAlert = document.getElementById('loginAlert');
 
-      const registration_number = regInput.value.trim();
-      const capacity = document.getElementById('capacity').value;
-      const driver_name = document.getElementById('driver_name').value;
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
 
-      // Frontend Regular Expression Validation
-      const regPattern = /^[A-Z]{3}-\d{4}$/;
+        if (res.ok && data.success) {
+          document.getElementById('loginSection').style.display = 'none';
+          document.getElementById('dashboardSection').style.display = 'flex';
+          initMap();
+          loadVehicles();
+        } else {
+          loginAlert.textContent = data.error || 'Invalid credentials';
+          loginAlert.style.display = 'block';
+        }
+      } catch (err) {
+        loginAlert.textContent = 'Server connection error.';
+        loginAlert.style.display = 'block';
+      }
+    });
 
-      if (!regPattern.test(registration_number)) {
-        showAlert('Invalid Format! Registration must strictly follow ABC-2009 (e.g., ABC-2009).', 'error');
+    // Handle Vehicle Registration
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const regInput = document.getElementById('registration_number').value.trim();
+      const regAlert = document.getElementById('regAlert');
+
+      regAlert.style.display = 'none';
+
+      if (!REG_REGEX.test(regInput)) {
+        regAlert.textContent = 'Invalid Format! Must be strictly 3 letters, hyphen, 4 numbers (e.g. ABC-2006).';
+        regAlert.className = 'alert alert-error';
+        regAlert.style.display = 'block';
         return;
       }
 
       try {
-        const response = await fetch('/api/vehicles', {
+        const res = await fetch('/api/vehicles', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            registration_number: registration_number,
-            capacity: capacity ? parseInt(capacity) : null,
-            driver_name: driver_name
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ registration_number: regInput })
         });
+        const data = await res.json();
 
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          showAlert(data.message || 'Vehicle registered successfully!', 'success');
-          form.reset();
+        if (res.ok && data.success) {
+          regAlert.textContent = 'Vehicle ' + regInput + ' registered successfully!';
+          regAlert.className = 'alert alert-success';
+          regAlert.style.display = 'block';
+          document.getElementById('registration_number').value = '';
+          loadVehicles(); // Refresh registered table
         } else {
-          showAlert(data.error || 'Failed to register vehicle.', 'error');
+          regAlert.textContent = data.error || 'Registration failed.';
+          regAlert.className = 'alert alert-error';
+          regAlert.style.display = 'block';
         }
       } catch (err) {
-        console.error('Request failed:', err);
-        showAlert('Unable to connect to the server. Please try again.', 'error');
+        regAlert.textContent = 'Failed to submit registration.';
+        regAlert.className = 'alert alert-error';
+        regAlert.style.display = 'block';
       }
     });
 
-    function showAlert(message, type) {
-      alertBox.textContent = message;
-      alertBox.className = `alert alert-${type}`;
-      alertBox.style.display = 'block';
+    // Initialize Harare Map
+    function initMap() {
+      if (map) return;
+      // Centered on Harare CBD coordinates [-17.8292, 31.0522]
+      map = L.map('harareMap').setView([-17.8292, 31.0522], 12);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+    }
+
+    // Load registered vehicles into bottom table
+    async function loadVehicles() {
+      try {
+        const res = await fetch('/api/vehicles');
+        const data = await res.json();
+        const tbody = document.getElementById('vehicleTableBody');
+
+        if (data.success && data.vehicles.length > 0) {
+          tbody.innerHTML = data.vehicles.map(v => `
+            <tr>
+              <td>${v.id}</td>
+              <td><strong>${v.registration_number}</strong></td>
+              <td><span class="status-badge">${v.status || 'ACTIVE'}</span></td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">No vehicles registered yet.</td></tr>';
+        }
+      } catch (err) {
+        console.error('Failed to load table:', err);
+      }
+    }
+
+    function logout() {
+      location.reload();
     }
   </script>
-
 </body>
 </html>
