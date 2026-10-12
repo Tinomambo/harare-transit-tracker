@@ -180,8 +180,8 @@ app.post('/api/officer/inspect', async (req, res) => {
 
     } catch (error) {
         await pool.query('ROLLBACK');
-        console.error('Enforcement logging error:', error);
-        return res.status(500).json({ error: 'Server error processing enforcement action' });
+        console.error('Enforcement logging detailed error:', error);
+        return res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -220,7 +220,7 @@ app.get('/api/enforcement/reports/summary', async (req, res) => {
 
     } catch (error) {
         console.error('Error fetching enforcement reports:', error);
-        return res.status(500).json({ error: 'Server error generating reports' });
+        return res.status(500).json({ success: false, error: error.message });
     }
 });
 
