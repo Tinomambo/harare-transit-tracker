@@ -103,8 +103,10 @@ app.post('/api/officer/verify', async (req, res) => {
       success: true,
       verified: true,
       vehicle: {
+        id: vehicle.id,
         registration_number: vehicle.registration_number,
         status: vehicle.status || 'ACTIVE',
+        operational_status: vehicle.operational_status || 'ACTIVE',
         is_live_transmitting: isLive,
         registered_id: vehicle.id
       }
@@ -114,6 +116,113 @@ app.post('/api/officer/verify', async (req, res) => {
     console.error('Field Verification Error:', error);
     return res.status(500).json({ success: false, error: 'Database error during vehicle verification.' });
   }
+});
+
+/**
+ * POST /api/officer/inspect
+ * Records an enforcement action (fine, impound flag, suspension) and updates vehicle operational status
+ */
+app.post('/api/officer/inspect', async (req, res) => {
+    const { 
+        officer_id, 
+        vehicle_id, 
+        vehicle_plate, 
+        is_registered, 
+        checkpoint_name, 
+        action_taken, 
+        fine_amount, 
+        notes 
+    } = req.body;
+
+    try {
+        await pool.query('BEGIN');
+
+        let paymentStatus = 'N/A';
+        if (action_taken === 'FINED') {
+            paymentStatus = 'UNPAID';
+        }
+
+        const logQuery = `
+            INSERT INTO enforcement_inspection_logs 
+            (officer_id, vehicle_id, vehicle_plate, is_registered, checkpoint_name, action_taken, fine_amount, payment_status, notes)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *;
+        `;
+        
+        const logValues = [
+            officer_id || 'OFFICER_DEFAULT', 
+            vehicle_id || null, 
+            vehicle_plate, 
+            is_registered, 
+            checkpoint_name || 'Harare Checkpoint', 
+            action_taken, 
+            fine_amount || 0.00, 
+            paymentStatus, 
+            notes
+        ];
+
+        const logResult = await pool.query(logQuery, logValues);
+
+        if (vehicle_id && (action_taken === 'IMPOUND_FLAGGED' || action_taken === 'DRIVER_SUSPENDED')) {
+            const newStatus = action_taken === 'IMPOUND_FLAGGED' ? 'IMPOUNDED' : 'SUSPENDED';
+            await pool.query(
+                `UPDATE vehicles SET operational_status = $1 WHERE id = $2`,
+                [newStatus, vehicle_id]
+            );
+        }
+
+        await pool.query('COMMIT');
+
+        return res.status(201).json({
+            success: true,
+            message: 'Enforcement action logged successfully',
+            inspection: logResult.rows[0]
+        });
+
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error('Enforcement logging error:', error);
+        return res.status(500).json({ error: 'Server error processing enforcement action' });
+    }
+});
+
+/**
+ * GET /api/enforcement/reports/summary
+ * Admin report summarizing compliance metrics and hotspot locations
+ */
+app.get('/api/enforcement/reports/summary', async (req, res) => {
+    try {
+        const statsQuery = `
+            SELECT 
+                COUNT(*) AS total_inspections,
+                SUM(CASE WHEN is_registered = TRUE THEN 1 ELSE 0 END) as registered_count,
+                SUM(CASE WHEN is_registered = FALSE THEN 1 ELSE 0 END) as unregistered_count,
+                SUM(fine_amount) as total_fines_issued,
+                SUM(CASE WHEN payment_status = 'PAID' THEN fine_amount ELSE 0 END) as total_fines_collected
+            FROM enforcement_inspection_logs;
+        `;
+
+        const hotspotQuery = `
+            SELECT checkpoint_name, COUNT(*) as infraction_count
+            FROM enforcement_inspection_logs
+            WHERE is_registered = FALSE OR action_taken != 'CLEARED'
+            GROUP BY checkpoint_name
+            ORDER BY infraction_count DESC;
+        `;
+
+        const stats = await pool.query(statsQuery);
+        const hotspots = await pool.query(hotspotQuery);
+
+        return res.json({
+            success: true,
+            summary: stats.rows[0],
+            hotspots: hotspots.rows
+        });
+
+    } catch (error) {
+        console.error('Error fetching enforcement reports:', error);
+        return res.status(500).json({ error: 'Server error generating reports' });
+    }
 });
 
 /**
@@ -134,7 +243,6 @@ app.post('/api/driver/login', async (req, res) => {
     const formattedReg = registration_number.trim().toUpperCase();
     const formattedPin = pin.trim();
 
-    // Verify vehicle registration and PIN match in Supabase
     const query = `
       SELECT * FROM vehicles 
       WHERE UPPER(registration_number) = $1 AND driver_pin = $2;
@@ -188,7 +296,7 @@ app.post('/api/driver/telemetry', (req, res) => {
  * Returns active vehicle locations for real-time rendering on the Admin Map
  */
 app.get('/api/admin/live-locations', (req, res) => {
-  res.json({ success: true, locations: liveVehicleLocations });
+  return res.json({ success: true, locations: liveVehicleLocations });
 });
 
 /**
@@ -208,7 +316,6 @@ app.post('/api/vehicles', async (req, res) => {
 
     const formattedReg = registration_number.trim().toUpperCase();
 
-    // Enforce format validation (e.g., ABC-2006)
     if (!REGISTRATION_REGEX.test(formattedReg)) {
       return res.status(400).json({
         success: false,
@@ -216,13 +323,11 @@ app.post('/api/vehicles', async (req, res) => {
       });
     }
 
-    // Generate 4-digit PIN for driver access
     const driverPin = generate4DigitPin();
 
-    // Insert into Supabase (registration_number, driver_pin, status)
     const insertQuery = `
-      INSERT INTO vehicles (registration_number, driver_pin, status)
-      VALUES ($1, $2, 'ACTIVE')
+      INSERT INTO vehicles (registration_number, driver_pin, status, operational_status)
+      VALUES ($1, $2, 'ACTIVE', 'ACTIVE')
       RETURNING *;
     `;
 
@@ -238,7 +343,6 @@ app.post('/api/vehicles', async (req, res) => {
   } catch (error) {
     console.error('Registration Error:', error);
 
-    // PostgreSQL Unique Constraint Violation (Duplicate Registration)
     if (error.code === '23505') {
       return res.status(409).json({ 
         success: false, 
@@ -248,7 +352,7 @@ app.post('/api/vehicles', async (req, res) => {
 
     return res.status(500).json({ 
       success: false, 
-      error: 'Database error while registering vehicle. Ensure driver_pin column exists in Supabase.' 
+      error: 'Database error while registering vehicle. Ensure driver_pin and operational_status columns exist in Supabase.' 
     });
   }
 });
