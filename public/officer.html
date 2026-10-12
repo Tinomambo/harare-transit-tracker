@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harare Transit - Municipal Enforcement Portal</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { color: #333; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; }
+        button:hover { background: #0056b3; }
+        .result-box { margin-top: 20px; padding: 15px; border-radius: 4px; background: #e9ecef; display: none; }
+        .action-panel { margin-top: 20px; border-top: 2px dashed #ccc; padding-top: 15px; display: none; }
+        .badge-unregistered { color: #d9534f; font-weight: bold; }
+        .badge-registered { color: #5cb85c; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Municipal Officer Checkpoint Terminal</h2>
+    <p>Scan or enter vehicle registration number (e.g., ABC-2006)</p>
+    
+    <div class="form-group">
+        <label for="regNumber">Vehicle Registration Number:</label>
+        <input type="text" id="regNumber" placeholder="e.g. ABC-2006" style="text-transform: uppercase;">
+    </div>
+    <button onclick="verifyVehicle()">Verify Vehicle</button>
+
+    <!-- Verification Result Box -->
+    <div id="resultBox" class="result-box">
+        <h3 id="resultTitle"></h3>
+        <p id="resultDetails"></p>
+    </div>
+
+    <!-- Enforcement Action Panel (Shown dynamically) -->
+    <div id="actionPanel" class="action-panel">
+        <h3>Enforcement & Disciplinary Action</h3>
+        
+        <div class="form-group">
+            <label for="checkpointName">Checkpoint Location:</label>
+            <input type="text" id="checkpointName" value="Fourth Street Rank">
+        </div>
+
+        <div class="form-group">
+            <label for="actionTaken">Action Required:</label>
+            <select id="actionTaken" onchange="toggleFineInput()">
+                <option value="CLEARED">Cleared / Valid (No Action)</option>
+                <option value="FINED">Issue Spot Fine ($30)</option>
+                <option value="IMPOUND_FLAGGED">Flag for Impoundment / Clamping</option>
+                <option value="DRIVER_SUSPENDED">Suspend Driver Account & PIN</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="fineGroup" style="display:none;">
+            <label for="fineAmount">Fine Amount ($):</label>
+            <input type="number" id="fineAmount" value="30.00">
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Officer Notes / Reason:</label>
+            <textarea id="notes" placeholder="Enter details of infraction..."></textarea>
+        </div>
+
+        <button onclick="submitEnforcementAction()" style="background: #d9534f;">Commit Enforcement Record</button>
+    </div>
+</div>
+
+<script>
+    let currentVehicleData = null;
+
+    async function verifyVehicle() {
+        const regNumber = document.getElementById('regNumber').value.trim();
+        if (!regNumber) {
+            alert('Please enter a registration number.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/officer/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ registration_number: regNumber })
+            });
+
+            const data = await response.json();
+            const resultBox = document.getElementById('resultBox');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultDetails = document.getElementById('resultDetails');
+            const actionPanel = document.getElementById('actionPanel');
+
+            resultBox.style.display = 'block';
+
+            if (data.success && data.verified) {
+                currentVehicleData = data.vehicle;
+                resultTitle.innerHTML = `<span class="badge-registered">REGISTERED VEHICLE</span>`;
+                resultDetails.innerHTML = `Plate: <strong>${data.vehicle.registration_number}</strong><br>Status: ${data.vehicle.operational_status}`;
+                
+                // Show action panel even for registered vehicles in case they are off-route or need minor fines
+                actionPanel.style.display = 'block';
+                document.getElementById('actionTaken').value = 'CLEARED';
+                toggleFineInput();
+            } else {
+                currentVehicleData = { id: null, registration_number: regNumber.toUpperCase() };
+                resultTitle.innerHTML = `<span class="badge-unregistered">UNREGISTERED VEHICLE / OFFENDER</span>`;
+                resultDetails.innerHTML = `Plate: <strong>${regNumber.toUpperCase()}</strong> is NOT found in the Harare Transit database. Immediate enforcement required.`;
+                
+                actionPanel.style.display = 'block';
+                document.getElementById('actionTaken').value = 'FINED';
+                toggleFineInput();
+            }
+        } catch (error) {
+            console.error('Verification error:', error);
+            alert('Network error connecting to server.');
+        }
+    }
+
+    function toggleFineInput() {
+        const action = document.getElementById('actionTaken').value;
+        const fineGroup = document.getElementById('fineGroup');
+        if (action === 'FINED') {
+            fineGroup.style.display = 'block';
+        } else {
+            fineGroup.style.display = 'none';
+        }
+    }
+
+    async function submitEnforcementAction() {
+        if (!currentVehicleData) return;
+
+        const payload = {
+            officer_id: 'OFFICER_HARARE_01', // Replace with logged-in officer session ID if available
+            vehicle_id: currentVehicleData.id || null,
+            vehicle_plate: currentVehicleData.registration_number,
+            is_registered: currentVehicleData.id !== null,
+            checkpoint_name: document.getElementById('checkpointName').value,
+            action_taken: document.getElementById('actionTaken').value,
+            fine_amount: parseFloat(document.getElementById('fineAmount').value) || 0.00,
+            notes: document.getElementById('notes').value
+        };
+
+        try {
+            const response = await fetch('/api/officer/inspect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert('Enforcement action successfully recorded and synced with database.');
+                location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Submission error:', error);
+            alert('Failed to submit enforcement action.');
+        }
+    }
+</script>
+
+</body>
+</html>
