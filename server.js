@@ -119,7 +119,7 @@ app.post('/api/officer/verify', async (req, res) => {
 
 /**
  * POST /api/officer/inspect
- * Records an enforcement action (fine, impound flag, suspension) and updates vehicle operational status
+ * Records an enforcement action and updates vehicle operational status
  */
 app.post('/api/officer/inspect', async (req, res) => {
     const { 
@@ -137,6 +137,14 @@ app.post('/api/officer/inspect', async (req, res) => {
         await pool.query('BEGIN');
 
         let paymentStatus = 'N/A';
+        // Only charge fine if action taken is FINED
+        let actualFineAmount = (action_taken === 'FINED') ? (parseFloat(fine_amount) || 0.00) : 0.00;
+        
+        // Force registered vehicles to $0.00 fine unless explicitly overridden by a fine action
+        if (is_registered && action_taken !== 'FINED') {
+            actualFineAmount = 0.00;
+        }
+
         if (action_taken === 'FINED') {
             paymentStatus = 'UNPAID';
         }
@@ -155,7 +163,7 @@ app.post('/api/officer/inspect', async (req, res) => {
             is_registered, 
             checkpoint_name || 'Harare Checkpoint', 
             action_taken, 
-            fine_amount || 0.00, 
+            actualFineAmount, 
             paymentStatus, 
             notes
         ];
