@@ -54,7 +54,6 @@ app.post('/api/admin/login', (req, res) => {
 app.post('/api/officer/login', (req, res) => {
   const { username, password } = req.body;
 
-  // Accept municipal officer credentials (officer / Harare2026 or officer / password)
   if ((username === 'officer' || username === 'officer1') && password) {
     return res.json({
       success: true,
@@ -215,8 +214,8 @@ app.get('/api/enforcement/reports/summary', async (req, res) => {
 
         return res.json({
             success: true,
-            summary: stats.rows[0],
-            hotspots: hotspots.rows
+            summary: stats.rows[0] || { total_inspections: 0, registered_count: 0, unregistered_count: 0, total_fines_issued: 0, total_fines_collected: 0 },
+            hotspots: hotspots.rows || []
         });
 
     } catch (error) {
@@ -327,7 +326,7 @@ app.post('/api/vehicles', async (req, res) => {
 
     const insertQuery = `
       INSERT INTO vehicles (registration_number, driver_pin, status, operational_status)
-      VALUES ($1, $2, 'ACTIVE', 'ACTIVE')
+      VALUES ($1, $2, 'registered', 'registered')
       RETURNING *;
     `;
 
@@ -366,9 +365,15 @@ app.get('/api/vehicles', async (req, res) => {
     const query = 'SELECT * FROM vehicles ORDER BY registration_number ASC;';
     const { rows } = await pool.query(query);
 
+    const normalizedRows = rows.map(v => ({
+      ...v,
+      status: 'registered',
+      operational_status: v.operational_status || 'registered'
+    }));
+
     return res.json({ 
       success: true, 
-      vehicles: rows 
+      vehicles: normalizedRows 
     });
   } catch (error) {
     console.error('Fetch Vehicles Error:', error);
