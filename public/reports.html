@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harare Transit - Enforcement & Compliance Reports</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0b1329; color: #f8fafc; padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #273e63; padding-bottom: 15px; }
+        h1 { font-size: 24px; color: #ffffff; }
+        .back-btn { background: #334155; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; }
+        .back-btn:hover { background: #475569; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background-color: #172a45; padding: 20px; border-radius: 10px; border: 1px solid #273e63; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .card h3 { font-size: 14px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; }
+        .card .value { font-size: 28px; font-weight: bold; color: #38bdf8; }
+        
+        .section-title { font-size: 18px; color: #ffffff; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; background-color: #172a45; border-radius: 8px; overflow: hidden; border: 1px solid #273e63; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #273e63; font-size: 14px; }
+        th { background-color: #1e3a60; color: #38bdf8; font-weight: 600; }
+        tr:hover { background-color: #1e293b; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Municipal Enforcement & Compliance Analytics</h1>
+        <a href="/admin.html" class="back-btn">← Back to Admin Control</a>
+    </div>
+
+    <!-- Summary Metric Cards -->
+    <div class="grid">
+        <div class="card">
+            <h3>Total Inspections</h3>
+            <div class="value" id="totalInspections">0</div>
+        </div>
+        <div class="card">
+            <h3>Registered Checked</h3>
+            <div class="value" id="registeredCount" style="color: #10b981;">0</div>
+        </div>
+        <div class="card">
+            <h3>Unregistered / Offending</h3>
+            <div class="value" id="unregisteredCount" style="color: #ef4444;">0</div>
+        </div>
+        <div class="card">
+            <h3>Total Fines Issued</h3>
+            <div class="value" id="totalFines">$0.00</div>
+        </div>
+    </div>
+
+    <!-- Hotspots Table -->
+    <h2 class="section-title">Checkpoint Infraction Hotspots</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Checkpoint Location</th>
+                <th>Total Infractions / Violations</th>
+            </tr>
+        </thead>
+        <tbody id="hotspotsTableBody">
+            <tr><td colspan="2" style="text-align: center; color: #94a3b8;">Loading analytics...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        async function fetchEnforcementReports() {
+            try {
+                const response = await fetch('/api/enforcement/reports/summary');
+                const data = await response.json();
+
+                if (data.success) {
+                    const stats = data.summary;
+                    document.getElementById('totalInspections').textContent = stats.total_inspections || 0;
+                    document.getElementById('registeredCount').textContent = stats.registered_count || 0;
+                    document.getElementById('unregisteredCount').textContent = stats.unregistered_count || 0;
+                    document.getElementById('totalFines').textContent = `$${parseFloat(stats.total_fines_issued || 0).toFixed(2)}`;
+
+                    const tbody = document.getElementById('hotspotsTableBody');
+                    tbody.innerHTML = '';
+
+                    if (data.hotspots.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="2" style="text-align: center; color: #94a3b8;">No infractions recorded yet.</td></tr>`;
+                        return;
+                    }
+
+                    data.hotspots.forEach(spot => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${spot.checkpoint_name || 'Unknown Checkpoint'}</td>
+                            <td><span style="background: #7f1d1d33; color: #fecaca; padding: 3px 8px; border-radius: 4px; font-weight: bold;">${spot.infraction_count} violations</span></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+            }
+        }
+
+        fetchEnforcementReports();
+    </script>
+
+</body>
+</html>
