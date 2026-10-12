@@ -105,8 +105,8 @@ app.post('/api/officer/verify', async (req, res) => {
       vehicle: {
         id: vehicle.id,
         registration_number: vehicle.registration_number,
-        status: vehicle.status || 'ACTIVE',
-        operational_status: vehicle.operational_status || 'ACTIVE',
+        status: vehicle.status || 'registered',
+        operational_status: vehicle.operational_status || 'registered',
         is_live_transmitting: isLive,
         registered_id: vehicle.id
       }
