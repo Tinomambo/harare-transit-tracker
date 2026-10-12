@@ -105,7 +105,6 @@
       background-color: #0369a1;
     }
 
-    /* Verification Portal Section */
     #verificationSection {
       display: none;
     }
@@ -201,7 +200,7 @@
     <!-- Verification Output Result -->
     <div id="resultBox" class="result-card"></div>
 
-    <!-- Enforcement Action Panel (Appears dynamically upon verification) -->
+    <!-- Enforcement Action Panel -->
     <div id="actionPanel" class="action-panel">
       <h3 style="color: #38bdf8; font-size: 16px; margin-bottom: 12px;">Enforcement & Disciplinary Action</h3>
       
@@ -222,7 +221,7 @@
 
       <div class="form-group" id="fineGroup" style="display:none;">
         <label for="fineAmount">Fine Amount ($)</label>
-        <input type="number" id="fineAmount" value="30.00" step="0.01">
+        <input type="number" id="fineAmount" value="0.00" step="0.01">
       </div>
 
       <div class="form-group">
@@ -246,10 +245,8 @@
     const actionPanel = document.getElementById('actionPanel');
     const regInput = document.getElementById('registration_number');
 
-    // Auto-uppercase input
     regInput.addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase());
 
-    // Officer Login Event
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       loginAlert.style.display = 'none';
@@ -279,7 +276,6 @@
       }
     });
 
-    // Vehicle License Verification Event
     verifyForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       resultBox.style.display = 'none';
@@ -307,9 +303,10 @@
               <div>Live Transmission: <strong>${data.vehicle.is_live_transmitting ? 'ACTIVE' : 'OFFLINE'}</strong></div>
             `;
             
-            // Show action panel (default to CLEARED, but officer can change if needed)
+            // Registered vehicles default to CLEARED with $0.00 fine
             actionPanel.style.display = 'block';
             document.getElementById('actionTaken').value = 'CLEARED';
+            document.getElementById('fineAmount').value = '0.00';
             toggleFineInput();
           } else {
             currentVehicleData = { id: null, registration_number: registration_number.toUpperCase() };
@@ -319,9 +316,10 @@
               <div>${data.message}</div>
             `;
 
-            // Show action panel (default to FINED for unregistered vehicles)
+            // Unregistered vehicles default to FINED with $30.00 spot fine
             actionPanel.style.display = 'block';
             document.getElementById('actionTaken').value = 'FINED';
+            document.getElementById('fineAmount').value = '30.00';
             toggleFineInput();
           }
           resultBox.style.display = 'block';
@@ -346,14 +344,17 @@
     async function submitEnforcementAction() {
       if (!currentVehicleData) return;
 
+      const actionTakenVal = document.getElementById('actionTaken').value;
+      const isRegistered = currentVehicleData.id !== null;
+
       const payload = {
         officer_id: 'OFFICER_HARARE_01',
         vehicle_id: currentVehicleData.id || null,
         vehicle_plate: currentVehicleData.registration_number,
-        is_registered: currentVehicleData.id !== null,
+        is_registered: isRegistered,
         checkpoint_name: document.getElementById('checkpointName').value,
-        action_taken: document.getElementById('actionTaken').value,
-        fine_amount: parseFloat(document.getElementById('fineAmount').value) || 0.00,
+        action_taken: actionTakenVal,
+        fine_amount: (isRegistered && actionTakenVal !== 'FINED') ? 0.00 : (parseFloat(document.getElementById('fineAmount').value) || 0.00),
         notes: document.getElementById('notes').value
       };
 
