@@ -42,4 +42,142 @@
             border-radius: 12px;
             font-size: 12px;
             font-weight: bold;
-            display: inline
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Municipal Enforcement & Compliance Analytics</h1>
+        <a href="/admin.html" class="back-btn">← Back to Admin Control</a>
+    </div>
+
+    <!-- Analytics Summary Cards -->
+    <div class="grid">
+        <div class="card">
+            <h3>Total Inspections</h3>
+            <div class="value" id="totalInspections">0</div>
+        </div>
+        <div class="card">
+            <h3>Registered Checked</h3>
+            <div class="value" id="registeredCount" style="color: #10b981;">0</div>
+        </div>
+        <div class="card">
+            <h3>Unregistered / Offending</h3>
+            <div class="value" id="unregisteredCount" style="color: #ef4444;">0</div>
+        </div>
+        <div class="card">
+            <h3>Total Fines Issued</h3>
+            <div class="value" id="totalFines">$0.00</div>
+        </div>
+        <div class="card" style="border-color: #38bdf8;">
+            <h3>Weekly Unregistered Fines</h3>
+            <div class="value" id="weeklyFines" style="color: #f59e0b;">$0.00</div>
+        </div>
+    </div>
+
+    <!-- Weekly Vehicle Inspection Breakdown Table -->
+    <h2 class="section-title">Weekly Vehicle Inspection Log & Plate Analysis</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Queried Vehicle Plate</th>
+                <th>Status</th>
+                <th>Checkpoint Location</th>
+                <th>Action Taken</th>
+                <th>Fine Charged ($)</th>
+                <th>Query Date & Time</th>
+            </tr>
+        </thead>
+        <tbody id="weeklyLogsTableBody">
+            <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Loading inspection log records...</td></tr>
+        </tbody>
+    </table>
+
+    <!-- Hotspots Table -->
+    <h2 class="section-title">Checkpoint Infraction Hotspots</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Checkpoint Location</th>
+                <th>Total Infractions / Violations</th>
+            </tr>
+        </thead>
+        <tbody id="hotspotsTableBody">
+            <tr><td colspan="2" style="text-align: center; color: #94a3b8;">Loading hotspot analytics...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        async function fetchEnforcementReports() {
+            try {
+                const response = await fetch('/api/enforcement/reports/summary');
+                const data = await response.json();
+
+                if (data && data.success) {
+                    const stats = data.summary || {};
+                    document.getElementById('totalInspections').textContent = stats.total_inspections || 0;
+                    document.getElementById('registeredCount').textContent = stats.registered_count || 0;
+                    document.getElementById('unregisteredCount').textContent = stats.unregistered_count || 0;
+                    document.getElementById('totalFines').textContent = `$${parseFloat(stats.total_fines_issued || 0).toFixed(2)}`;
+                    document.getElementById('weeklyFines').textContent = `$${parseFloat(stats.weekly_unregistered_fines || 0).toFixed(2)}`;
+
+                    // Render Weekly Log Table
+                    const logsTbody = document.getElementById('weeklyLogsTableBody');
+                    logsTbody.innerHTML = '';
+
+                    if (!data.weekly_logs || data.weekly_logs.length === 0) {
+                        logsTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8;">No vehicle queries recorded in the past 7 days.</td></tr>`;
+                    } else {
+                        data.weekly_logs.forEach(log => {
+                            const tr = document.createElement('tr');
+                            const dateStr = log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A';
+                            const statusBadge = log.is_registered 
+                                ? `<span class="badge-registered">REGISTERED</span>`
+                                : `<span class="badge-unregistered">UNREGISTERED</span>`;
+
+                            tr.innerHTML = `
+                                <td style="font-weight: bold; color: #ffffff;">${log.vehicle_plate || 'N/A'}</td>
+                                <td>${statusBadge}</td>
+                                <td>${log.checkpoint_name || 'Harare Checkpoint'}</td>
+                                <td>${log.action_taken || 'N/A'}</td>
+                                <td style="color: ${Number(log.fine_amount) > 0 ? '#ef4444' : '#10b981'}; font-weight: bold;">
+                                    $${parseFloat(log.fine_amount || 0).toFixed(2)}
+                                </td>
+                                <td style="color: #94a3b8; font-size: 13px;">${dateStr}</td>
+                            `;
+                            logsTbody.appendChild(tr);
+                        });
+                    }
+
+                    // Render Hotspots Table
+                    const hotspotsTbody = document.getElementById('hotspotsTableBody');
+                    hotspotsTbody.innerHTML = '';
+
+                    if (!data.hotspots || data.hotspots.length === 0) {
+                        hotspotsTbody.innerHTML = `<tr><td colspan="2" style="text-align: center; color: #94a3b8;">No infractions recorded yet.</td></tr>`;
+                    } else {
+                        data.hotspots.forEach(spot => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${spot.checkpoint_name || 'Unknown Checkpoint'}</td>
+                                <td><span style="background: #7f1d1d33; color: #fecaca; padding: 3px 8px; border-radius: 4px; font-weight: bold;">${spot.infraction_count} violations</span></td>
+                            `;
+                            hotspotsTbody.appendChild(tr);
+                        });
+                    }
+                } else {
+                    document.getElementById('weeklyLogsTableBody').innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Failed to load report data from server.</td></tr>`;
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                document.getElementById('weeklyLogsTableBody').innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Error connecting to server API.</td></tr>`;
+            }
+        }
+
+        fetchEnforcementReports();
+    </script>
+
+</body>
+</html>
