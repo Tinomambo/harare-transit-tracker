@@ -195,7 +195,7 @@ app.post('/api/officer/inspect', async (req, res) => {
 
 /**
  * GET /api/enforcement/reports/summary
- * Admin report summarizing compliance metrics and hotspot locations
+ * Admin report summarizing compliance metrics, weekly unregistered revenue, and plate-number logs
  */
 app.get('/api/enforcement/reports/summary', async (req, res) => {
     try {
@@ -204,9 +204,22 @@ app.get('/api/enforcement/reports/summary', async (req, res) => {
                 COUNT(*) AS total_inspections,
                 SUM(CASE WHEN is_registered = TRUE THEN 1 ELSE 0 END) as registered_count,
                 SUM(CASE WHEN is_registered = FALSE THEN 1 ELSE 0 END) as unregistered_count,
-                SUM(fine_amount) as total_fines_issued,
-                SUM(CASE WHEN payment_status = 'PAID' THEN fine_amount ELSE 0 END) as total_fines_collected
+                SUM(CASE WHEN is_registered = FALSE THEN fine_amount ELSE 0 END) as total_fines_issued,
+                COALESCE(SUM(CASE WHEN is_registered = FALSE AND created_at >= NOW() - INTERVAL '7 days' THEN fine_amount ELSE 0 END), 0.00) as weekly_unregistered_fines
             FROM enforcement_inspection_logs;
+        `;
+
+        const recentLogsQuery = `
+            SELECT 
+                vehicle_plate, 
+                is_registered, 
+                checkpoint_name, 
+                action_taken, 
+                fine_amount, 
+                created_at
+            FROM enforcement_inspection_logs
+            WHERE created_at >= NOW() - INTERVAL '7 days'
+            ORDER BY created_at DESC;
         `;
 
         const hotspotQuery = `
@@ -218,11 +231,19 @@ app.get('/api/enforcement/reports/summary', async (req, res) => {
         `;
 
         const stats = await pool.query(statsQuery);
+        const recentLogs = await pool.query(recentLogsQuery);
         const hotspots = await pool.query(hotspotQuery);
 
         return res.json({
             success: true,
-            summary: stats.rows[0] || { total_inspections: 0, registered_count: 0, unregistered_count: 0, total_fines_issued: 0, total_fines_collected: 0 },
+            summary: stats.rows[0] || { 
+                total_inspections: 0, 
+                registered_count: 0, 
+                unregistered_count: 0, 
+                total_fines_issued: 0, 
+                weekly_unregistered_fines: 0 
+            },
+            weekly_logs: recentLogs.rows || [],
             hotspots: hotspots.rows || []
         });
 
