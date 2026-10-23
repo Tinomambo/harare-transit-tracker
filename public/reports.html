@@ -95,20 +95,6 @@
         </tbody>
     </table>
 
-    <!-- Hotspots Table -->
-    <h2 class="section-title">Checkpoint Infraction Hotspots</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Checkpoint Location</th>
-                <th>Total Infractions / Violations</th>
-            </tr>
-        </thead>
-        <tbody id="hotspotsTableBody">
-            <tr><td colspan="2" style="text-align: center; color: #94a3b8;">Loading hotspot analytics...</td></tr>
-        </tbody>
-    </table>
-
     <script>
         async function fetchEnforcementReports() {
             try {
@@ -148,23 +134,6 @@
                                 <td style="color: #94a3b8; font-size: 13px;">${dateStr}</td>
                             `;
                             logsTbody.appendChild(tr);
-                        });
-                    }
-
-                    // Render Hotspots Table
-                    const hotspotsTbody = document.getElementById('hotspotsTableBody');
-                    hotspotsTbody.innerHTML = '';
-
-                    if (!data.hotspots || data.hotspots.length === 0) {
-                        hotspotsTbody.innerHTML = `<tr><td colspan="2" style="text-align: center; color: #94a3b8;">No infractions recorded yet.</td></tr>`;
-                    } else {
-                        data.hotspots.forEach(spot => {
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = `
-                                <td>${spot.checkpoint_name || 'Unknown Checkpoint'}</td>
-                                <td><span style="background: #7f1d1d33; color: #fecaca; padding: 3px 8px; border-radius: 4px; font-weight: bold;">${spot.infraction_count} violations</span></td>
-                            `;
-                            hotspotsTbody.appendChild(tr);
                         });
                     }
                 } else {
