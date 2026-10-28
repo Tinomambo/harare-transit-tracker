@@ -206,7 +206,12 @@
       
       <div class="form-group">
         <label for="checkpointName">Checkpoint Location</label>
-        <input type="text" id="checkpointName" value="Fourth Street Rank">
+        <select id="checkpointName">
+          <option value="Fourth Street Rank">Fourth Street Rank</option>
+          <option value="Copacabana Bus Station">Copacabana Bus Station</option>
+          <option value="Rezende Street Rank">Rezende Street Rank</option>
+          <option value="Harare Checkpoint">General Harare Checkpoint</option>
+        </select>
       </div>
 
       <div class="form-group">
@@ -303,7 +308,6 @@
               <div>Live Transmission: <strong>${data.vehicle.is_live_transmitting ? 'ACTIVE' : 'OFFLINE'}</strong></div>
             `;
             
-            // Registered vehicles default to CLEARED with $0.00 fine
             actionPanel.style.display = 'block';
             document.getElementById('actionTaken').value = 'CLEARED';
             document.getElementById('fineAmount').value = '0.00';
@@ -316,7 +320,6 @@
               <div>${data.message}</div>
             `;
 
-            // Unregistered vehicles default to FINED with $30.00 spot fine
             actionPanel.style.display = 'block';
             document.getElementById('actionTaken').value = 'FINED';
             document.getElementById('fineAmount').value = '30.00';
