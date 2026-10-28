@@ -28,7 +28,7 @@
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
       width: 100%;
-      max-width: 420px;
+      max-width: 500px;
       text-align: center;
       border: 1px solid #273e63;
     }
@@ -71,7 +71,7 @@
       margin-bottom: 6px;
     }
 
-    input {
+    input, select, textarea {
       width: 100%;
       padding: 12px;
       border: 1px solid #273e63;
@@ -79,9 +79,10 @@
       background-color: #0b1329;
       color: #fff;
       font-size: 15px;
+      box-sizing: border-box;
     }
 
-    input:focus {
+    input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: #0284c7;
     }
@@ -104,7 +105,6 @@
       background-color: #0369a1;
     }
 
-    /* Verification Portal Section */
     #verificationSection {
       display: none;
     }
@@ -129,6 +129,14 @@
       color: #fecaca;
     }
 
+    .action-panel {
+      margin-top: 20px;
+      border-top: 2px dashed #273e63;
+      padding-top: 20px;
+      text-align: left;
+      display: none;
+    }
+
     .alert {
       padding: 12px;
       border-radius: 6px;
@@ -140,11 +148,6 @@
     .alert-error {
       background-color: #7f1d1d;
       color: #fecaca;
-    }
-
-    .alert-success {
-      background-color: #065f46;
-      color: #a7f3d0;
     }
   </style>
 </head>
@@ -173,11 +176,11 @@
     <div id="loginAlert" class="alert alert-error"></div>
   </div>
 
-  <!-- 2. FIELD VERIFICATION TERMINAL -->
+  <!-- 2. FIELD VERIFICATION & ENFORCEMENT TERMINAL -->
   <div id="verificationSection" class="card">
     <div class="badge">City of Harare</div>
     <h2>Vehicle Compliance Scanner</h2>
-    <div class="subtitle">Enter license plate to verify registration status</div>
+    <div class="subtitle">Enter license plate to verify registration and enforce compliance</div>
 
     <form id="verifyForm">
       <div class="form-group">
@@ -197,20 +200,58 @@
     <!-- Verification Output Result -->
     <div id="resultBox" class="result-card"></div>
 
+    <!-- Enforcement Action Panel -->
+    <div id="actionPanel" class="action-panel">
+      <h3 style="color: #38bdf8; font-size: 16px; margin-bottom: 12px;">Enforcement & Disciplinary Action</h3>
+      
+      <div class="form-group">
+        <label for="checkpointName">Checkpoint Location</label>
+        <select id="checkpointName">
+          <option value="Fourth Street Rank">Fourth Street Rank</option>
+          <option value="Copacabana Bus Station">Copacabana Bus Station</option>
+          <option value="Rezende Street Rank">Rezende Street Rank</option>
+          <option value="Harare Checkpoint">General Harare Checkpoint</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="actionTaken">Action Required</label>
+        <select id="actionTaken" onchange="toggleFineInput()">
+          <option value="CLEARED">Cleared / Valid (No Action)</option>
+          <option value="FINED">Issue Spot Fine ($30)</option>
+          <option value="IMPOUND_FLAGGED">Flag for Impoundment / Clamping</option>
+          <option value="DRIVER_SUSPENDED">Suspend Driver Account & PIN</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="fineGroup" style="display:none;">
+        <label for="fineAmount">Fine Amount ($)</label>
+        <input type="number" id="fineAmount" value="0.00" step="0.01">
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Officer Notes / Reason</label>
+        <textarea id="notes" placeholder="Enter details of infraction..." rows="2"></textarea>
+      </div>
+
+      <button onclick="submitEnforcementAction()" style="background-color: #ef4444;">Commit Enforcement Record</button>
+    </div>
+
     <button onclick="logout()" style="background-color: #334155; margin-top: 20px;">Logout Officer</button>
   </div>
 
   <script>
+    let currentVehicleData = null;
+
     const loginForm = document.getElementById('officerLoginForm');
     const verifyForm = document.getElementById('verifyForm');
     const loginAlert = document.getElementById('loginAlert');
     const resultBox = document.getElementById('resultBox');
+    const actionPanel = document.getElementById('actionPanel');
     const regInput = document.getElementById('registration_number');
 
-    // Auto-uppercase inputs
     regInput.addEventListener('input', (e) => e.target.value = e.target.value.toUpperCase());
 
-    // Officer Login Event
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       loginAlert.style.display = 'none';
@@ -240,10 +281,10 @@
       }
     });
 
-    // Vehicle License Verification Event
     verifyForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       resultBox.style.display = 'none';
+      actionPanel.style.display = 'none';
 
       const registration_number = regInput.value.trim();
 
@@ -258,19 +299,31 @@
 
         if (response.ok && data.success) {
           if (data.verified) {
+            currentVehicleData = data.vehicle;
             resultBox.className = 'result-card result-valid';
             resultBox.innerHTML = `
-              <div style="font-weight: bold; font-size: 16px; margin-bottom: 6px;">✓ COMPLIANT VEHICLE</div>
+              <div style="font-weight: bold; font-size: 15px; margin-bottom: 6px;">✓ COMPLIANT VEHICLE</div>
               <div>Registration: <strong>${data.vehicle.registration_number}</strong></div>
-              <div>Status: <strong>${data.vehicle.status}</strong></div>
+              <div>Operational Status: <strong>${data.vehicle.operational_status || data.vehicle.status}</strong></div>
               <div>Live Transmission: <strong>${data.vehicle.is_live_transmitting ? 'ACTIVE' : 'OFFLINE'}</strong></div>
             `;
+            
+            actionPanel.style.display = 'block';
+            document.getElementById('actionTaken').value = 'CLEARED';
+            document.getElementById('fineAmount').value = '0.00';
+            toggleFineInput();
           } else {
+            currentVehicleData = { id: null, registration_number: registration_number.toUpperCase() };
             resultBox.className = 'result-card result-invalid';
             resultBox.innerHTML = `
-              <div style="font-weight: bold; font-size: 16px; margin-bottom: 6px;">✕ NON-COMPLIANT / UNREGISTERED</div>
+              <div style="font-weight: bold; font-size: 15px; margin-bottom: 6px;">✕ NON-COMPLIANT / UNREGISTERED</div>
               <div>${data.message}</div>
             `;
+
+            actionPanel.style.display = 'block';
+            document.getElementById('actionTaken').value = 'FINED';
+            document.getElementById('fineAmount').value = '30.00';
+            toggleFineInput();
           }
           resultBox.style.display = 'block';
         } else {
@@ -280,6 +333,53 @@
         alert('Server communication error.');
       }
     });
+
+    function toggleFineInput() {
+      const action = document.getElementById('actionTaken').value;
+      const fineGroup = document.getElementById('fineGroup');
+      if (action === 'FINED') {
+        fineGroup.style.display = 'block';
+      } else {
+        fineGroup.style.display = 'none';
+      }
+    }
+
+    async function submitEnforcementAction() {
+      if (!currentVehicleData) return;
+
+      const actionTakenVal = document.getElementById('actionTaken').value;
+      const isRegistered = currentVehicleData.id !== null;
+
+      const payload = {
+        officer_id: 'OFFICER_HARARE_01',
+        vehicle_id: currentVehicleData.id || null,
+        vehicle_plate: currentVehicleData.registration_number,
+        is_registered: isRegistered,
+        checkpoint_name: document.getElementById('checkpointName').value,
+        action_taken: actionTakenVal,
+        fine_amount: (isRegistered && actionTakenVal !== 'FINED') ? 0.00 : (parseFloat(document.getElementById('fineAmount').value) || 0.00),
+        notes: document.getElementById('notes').value
+      };
+
+      try {
+        const response = await fetch('/api/officer/inspect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          alert('Enforcement action successfully recorded and synced with the database.');
+          location.reload();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Submission error:', error);
+        alert('Failed to submit enforcement action.');
+      }
+    }
 
     function logout() {
       location.reload();
