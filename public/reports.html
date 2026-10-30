@@ -255,6 +255,7 @@
             </tr>
           </thead>
           <tbody id="inspectionTableBody">
+            <!-- Default initial rows (Overwritten dynamically if storage or API logs are present) -->
             <tr>
               <td class="fw-bold">AHA-2678</td>
               <td><span class="badge badge-unregistered rounded-pill px-3">UNREGISTERED</span></td>
@@ -323,6 +324,126 @@
 
   <!-- Functionality Scripts -->
   <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      loadInspectionLogs();
+    });
+
+    /**
+     * Dynamically load inspection logs from localStorage or API
+     */
+    async function loadInspectionLogs() {
+      let logs = [];
+
+      // 1. Try loading from API endpoint first
+      try {
+        const res = await fetch('/api/inspections');
+        if (res.ok) {
+          logs = await res.json();
+        }
+      } catch (err) {
+        console.log("Backend API not reachable, checking localStorage...");
+      }
+
+      // 2. Fallback to localStorage if API returned nothing
+      if (!logs || logs.length === 0) {
+        try {
+          const storedLogs = localStorage.getItem('inspection_logs') || localStorage.getItem('harare_transit_logs');
+          if (storedLogs) {
+            logs = JSON.parse(storedLogs);
+          }
+        } catch (e) {
+          console.error("Error parsing stored logs:", e);
+        }
+      }
+
+      // If no dynamically saved logs exist, preserve initial markup
+      if (!logs || logs.length === 0) {
+        recalculateSummaryCards();
+        return;
+      }
+
+      // Render retrieved logs to table
+      renderTableData(logs);
+    }
+
+    /**
+     * Render log items into the HTML table & update dashboard cards
+     */
+    function renderTableData(logs) {
+      const tbody = document.getElementById('inspectionTableBody');
+      tbody.innerHTML = '';
+
+      let totalInspections = logs.length;
+      let totalRegistered = 0;
+      let totalUnregistered = 0;
+      let totalFines = 0;
+
+      logs.forEach(log => {
+        const plate = log.plate || log.vehicle_plate || 'UNKNOWN';
+        const status = (log.status || 'UNREGISTERED').toUpperCase();
+        const location = log.location || log.checkpoint_location || 'Rezende Street Rank';
+        const isUnregistered = status === 'UNREGISTERED' || status === 'OFFENDING' || status === 'FINED';
+
+        if (isUnregistered) {
+          totalUnregistered++;
+          totalFines += 30; // standard $30 fine
+        } else {
+          totalRegistered++;
+        }
+
+        const badgeClass = isUnregistered ? 'badge-unregistered' : 'badge-registered';
+        const actionText = isUnregistered ? 'FINED' : 'CLEARED';
+        const fineText = isUnregistered ? '$30.00' : '$0.00';
+        const fineClass = isUnregistered ? 'text-danger' : 'text-success';
+        const timeStamp = log.timestamp || log.created_at || new Date().toLocaleString();
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="fw-bold">${plate}</td>
+          <td><span class="badge ${badgeClass} rounded-pill px-3">${status}</span></td>
+          <td>${location}</td>
+          <td>${actionText}</td>
+          <td class="${fineClass} fw-bold">${fineText}</td>
+          <td>${timeStamp}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      // Update Summary Cards dynamically
+      document.getElementById('statTotalInspections').textContent = totalInspections;
+      document.getElementById('statRegisteredChecked').textContent = totalRegistered;
+      document.getElementById('statUnregisteredOffending').textContent = totalUnregistered;
+      document.getElementById('statTotalFines').textContent = `$${totalFines.toFixed(2)}`;
+      document.getElementById('statWeeklyFines').textContent = `$${totalFines.toFixed(2)}`;
+    }
+
+    /**
+     * Recalculates card metric counts from visible table rows
+     */
+    function recalculateSummaryCards() {
+      const rows = document.querySelectorAll('#inspectionTableBody tr');
+      let total = rows.length;
+      let registered = 0;
+      let unregistered = 0;
+      let fines = 0;
+
+      rows.forEach(row => {
+        const statusText = row.cells[1].textContent.trim().toUpperCase();
+        if (statusText === 'UNREGISTERED' || statusText === 'OFFENDING') {
+          unregistered++;
+          fines += 30;
+        } else {
+          registered++;
+        }
+      });
+
+      document.getElementById('statTotalInspections').textContent = total;
+      document.getElementById('statRegisteredChecked').textContent = registered;
+      document.getElementById('statUnregisteredOffending').textContent = unregistered;
+      document.getElementById('statTotalFines').textContent = `$${fines.toFixed(2)}`;
+      document.getElementById('statWeeklyFines').textContent = `$${fines.toFixed(2)}`;
+    }
+
     /**
      * Filter table rows based on Plate Number or Date inputs
      */
@@ -333,7 +454,7 @@
 
       rows.forEach(row => {
         const plateCell = row.cells[0].textContent.toLowerCase();
-        const dateCell = row.cells[5].textContent; // Format in table: DD/MM/YYYY, HH:MM:SS
+        const dateCell = row.cells[5].textContent; 
 
         let matchesPlate = true;
         let matchesDate = true;
@@ -350,11 +471,7 @@
           }
         }
 
-        if (matchesPlate && matchesDate) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
+        row.style.display = (matchesPlate && matchesDate) ? '' : 'none';
       });
     }
 
@@ -399,7 +516,7 @@
       const rows = document.querySelectorAll('#inspectionTable tr');
 
       rows.forEach(row => {
-        // Skip rows that are hidden due to filtering
+        // Skip hidden filtered rows
         if (row.style.display === 'none' && row.parentNode.tagName === 'TBODY') {
           return;
         }
@@ -408,9 +525,7 @@
         const rowData = [];
 
         cols.forEach(col => {
-          // Clean text content (remove extra spacing or badge formatting artifacts)
           let text = col.innerText.replace(/(\r\n|\n|\r)/gm, '').trim();
-          // Escape double quotes for CSV format
           text = `"${text.replace(/"/g, '""')}"`;
           rowData.push(text);
         });
@@ -418,7 +533,6 @@
         csv.push(rowData.join(','));
       });
 
-      // Download CSV file
       const csvFile = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
       const downloadLink = document.createElement('a');
       downloadLink.href = window.URL.createObjectURL(csvFile);
