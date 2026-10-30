@@ -195,7 +195,7 @@ app.post('/api/officer/inspect', async (req, res) => {
 
 /**
  * GET /api/enforcement/reports/summary
- * Admin report summarizing compliance metrics, weekly unregistered revenue, and plate-number logs
+ * Admin report summarizing compliance metrics, weekly/monthly unregistered revenue, and plate inspection logs
  */
 app.get('/api/enforcement/reports/summary', async (req, res) => {
     try {
@@ -205,7 +205,8 @@ app.get('/api/enforcement/reports/summary', async (req, res) => {
                 SUM(CASE WHEN is_registered = TRUE THEN 1 ELSE 0 END) as registered_count,
                 SUM(CASE WHEN is_registered = FALSE THEN 1 ELSE 0 END) as unregistered_count,
                 SUM(CASE WHEN is_registered = FALSE THEN fine_amount ELSE 0 END) as total_fines_issued,
-                COALESCE(SUM(CASE WHEN is_registered = FALSE AND created_at >= NOW() - INTERVAL '7 days' THEN fine_amount ELSE 0 END), 0.00) as weekly_unregistered_fines
+                COALESCE(SUM(CASE WHEN is_registered = FALSE AND created_at >= NOW() - INTERVAL '7 days' THEN fine_amount ELSE 0 END), 0.00) as weekly_unregistered_fines,
+                COALESCE(SUM(CASE WHEN is_registered = FALSE AND created_at >= NOW() - INTERVAL '30 days' THEN fine_amount ELSE 0 END), 0.00) as monthly_unregistered_fines
             FROM enforcement_inspection_logs;
         `;
 
@@ -218,21 +219,12 @@ app.get('/api/enforcement/reports/summary', async (req, res) => {
                 fine_amount, 
                 created_at
             FROM enforcement_inspection_logs
-            WHERE created_at >= NOW() - INTERVAL '7 days'
+            WHERE created_at >= NOW() - INTERVAL '30 days'
             ORDER BY created_at DESC;
-        `;
-
-        const hotspotQuery = `
-            SELECT checkpoint_name, COUNT(*) as infraction_count
-            FROM enforcement_inspection_logs
-            WHERE is_registered = FALSE OR action_taken != 'CLEARED'
-            GROUP BY checkpoint_name
-            ORDER BY infraction_count DESC;
         `;
 
         const stats = await pool.query(statsQuery);
         const recentLogs = await pool.query(recentLogsQuery);
-        const hotspots = await pool.query(hotspotQuery);
 
         return res.json({
             success: true,
@@ -241,10 +233,10 @@ app.get('/api/enforcement/reports/summary', async (req, res) => {
                 registered_count: 0, 
                 unregistered_count: 0, 
                 total_fines_issued: 0, 
-                weekly_unregistered_fines: 0 
+                weekly_unregistered_fines: 0,
+                monthly_unregistered_fines: 0 
             },
-            weekly_logs: recentLogs.rows || [],
-            hotspots: hotspots.rows || []
+            weekly_logs: recentLogs.rows || []
         });
 
     } catch (error) {
