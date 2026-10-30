@@ -78,12 +78,10 @@
 
     /* Print Optimization Styles */
     @media print {
-      /* Hide navigation, search controls, sidebars, and action buttons */
       nav, .navbar, .sidebar, .btn, input, .search-box, header, footer, .no-print {
         display: none !important;
       }
 
-      /* Reset theme background to clean white paper layout */
       body {
         background-color: #ffffff !important;
         color: #000000 !important;
@@ -99,7 +97,6 @@
         margin: 0 !important;
       }
 
-      /* Formatting metric cards for print */
       .stat-card {
         border: 1px solid #333 !important;
         background-color: #f8f9fa !important;
@@ -115,7 +112,6 @@
         color: #000000 !important;
       }
 
-      /* Print Header Display */
       .print-header {
         display: block !important;
         text-align: center;
@@ -131,7 +127,6 @@
         margin: 0;
       }
 
-      /* Table Print Formatting */
       .table-dark-custom {
         background-color: #ffffff !important;
         color: #000000 !important;
@@ -159,7 +154,6 @@
         color: #000000 !important;
       }
 
-      /* Print badges styling */
       .badge {
         border: 1px solid #000000 !important;
         color: #000000 !important;
@@ -225,7 +219,7 @@
             <input type="text" id="plateSearchInput" class="form-control form-control-sm bg-dark text-white border-secondary no-print" style="max-width: 180px;" placeholder="Search by Plate" onkeyup="filterTable()">
             <input type="date" id="dateSearchInput" class="form-control form-control-sm bg-dark text-white border-secondary no-print" style="max-width: 150px;" onchange="filterTable()">
             
-            <!-- Action Buttons (Print & Export) -->
+            <!-- Action Buttons -->
             <button onclick="printFilteredReport()" class="btn btn-outline-info btn-sm no-print" title="Print currently filtered results">
               <i class="bi bi-printer-fill me-1"></i> Print Queried
             </button>
@@ -255,7 +249,7 @@
             </tr>
           </thead>
           <tbody id="inspectionTableBody">
-            <!-- Default initial rows (Overwritten dynamically if storage or API logs are present) -->
+            <!-- Initial demo rows -->
             <tr>
               <td class="fw-bold">AHA-2678</td>
               <td><span class="badge badge-unregistered rounded-pill px-3">UNREGISTERED</span></td>
@@ -325,100 +319,71 @@
   <!-- Functionality Scripts -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      loadInspectionLogs();
+      loadAndMergeLogs();
     });
 
     /**
-     * Dynamically load inspection logs from localStorage or API
+     * Pulls stored logs from all possible local keys and prepends them to the table
      */
-    async function loadInspectionLogs() {
-      let logs = [];
+    function loadAndMergeLogs() {
+      let savedLogs = [];
 
-      // 1. Try loading from API endpoint first
-      try {
-        const res = await fetch('/api/inspections');
-        if (res.ok) {
-          logs = await res.json();
-        }
-      } catch (err) {
-        console.log("Backend API not reachable, checking localStorage...");
-      }
-
-      // 2. Fallback to localStorage if API returned nothing
-      if (!logs || logs.length === 0) {
+      // Check multiple common storage keys used across enforcement apps
+      const possibleKeys = ['inspection_logs', 'harare_transit_logs', 'inspections', 'transit_queries', 'queried_vehicles'];
+      
+      for (let key of possibleKeys) {
         try {
-          const storedLogs = localStorage.getItem('inspection_logs') || localStorage.getItem('harare_transit_logs');
-          if (storedLogs) {
-            logs = JSON.parse(storedLogs);
+          const data = localStorage.getItem(key);
+          if (data) {
+            const parsed = JSON.parse(data);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              savedLogs = parsed;
+              break;
+            }
           }
         } catch (e) {
-          console.error("Error parsing stored logs:", e);
+          console.error("Error reading key:", key, e);
         }
       }
 
-      // If no dynamically saved logs exist, preserve initial markup
-      if (!logs || logs.length === 0) {
+      if (savedLogs.length === 0) {
         recalculateSummaryCards();
         return;
       }
 
-      // Render retrieved logs to table
-      renderTableData(logs);
-    }
-
-    /**
-     * Render log items into the HTML table & update dashboard cards
-     */
-    function renderTableData(logs) {
       const tbody = document.getElementById('inspectionTableBody');
-      tbody.innerHTML = '';
-
-      let totalInspections = logs.length;
-      let totalRegistered = 0;
-      let totalUnregistered = 0;
-      let totalFines = 0;
-
-      logs.forEach(log => {
-        const plate = log.plate || log.vehicle_plate || 'UNKNOWN';
-        const status = (log.status || 'UNREGISTERED').toUpperCase();
-        const location = log.location || log.checkpoint_location || 'Rezende Street Rank';
-        const isUnregistered = status === 'UNREGISTERED' || status === 'OFFENDING' || status === 'FINED';
-
-        if (isUnregistered) {
-          totalUnregistered++;
-          totalFines += 30; // standard $30 fine
-        } else {
-          totalRegistered++;
-        }
-
+      
+      // Prepend newly verified vehicles so they appear at the very top of the table
+      savedLogs.reverse().forEach(log => {
+        const plate = log.plate || log.vehicle_plate || log.registration || 'UNKNOWN';
+        const rawStatus = (log.status || log.vehicle_status || 'UNREGISTERED').toUpperCase();
+        const isUnregistered = rawStatus.includes('UNREGISTERED') || rawStatus.includes('OFFENDING') || rawStatus.includes('FINED');
+        
+        const statusText = isUnregistered ? 'UNREGISTERED' : 'REGISTERED';
         const badgeClass = isUnregistered ? 'badge-unregistered' : 'badge-registered';
         const actionText = isUnregistered ? 'FINED' : 'CLEARED';
-        const fineText = isUnregistered ? '$30.00' : '$0.00';
+        const fineText = isUnregistered ? (log.fine || '$30.00') : '$0.00';
         const fineClass = isUnregistered ? 'text-danger' : 'text-success';
-        const timeStamp = log.timestamp || log.created_at || new Date().toLocaleString();
+        const location = log.location || log.checkpoint || log.checkpoint_location || 'Rezende Street Rank';
+        const timestamp = log.timestamp || log.date || log.created_at || new Date().toLocaleString();
 
         const row = document.createElement('tr');
         row.innerHTML = `
           <td class="fw-bold">${plate}</td>
-          <td><span class="badge ${badgeClass} rounded-pill px-3">${status}</span></td>
+          <td><span class="badge ${badgeClass} rounded-pill px-3">${statusText}</span></td>
           <td>${location}</td>
           <td>${actionText}</td>
           <td class="${fineClass} fw-bold">${fineText}</td>
-          <td>${timeStamp}</td>
+          <td>${timestamp}</td>
         `;
-        tbody.appendChild(row);
+        tbody.insertBefore(row, tbody.firstChild);
       });
 
-      // Update Summary Cards dynamically
-      document.getElementById('statTotalInspections').textContent = totalInspections;
-      document.getElementById('statRegisteredChecked').textContent = totalRegistered;
-      document.getElementById('statUnregisteredOffending').textContent = totalUnregistered;
-      document.getElementById('statTotalFines').textContent = `$${totalFines.toFixed(2)}`;
-      document.getElementById('statWeeklyFines').textContent = `$${totalFines.toFixed(2)}`;
+      recalculateSummaryCards();
     }
 
     /**
-     * Recalculates card metric counts from visible table rows
+     * Dynamically updates the top metric cards based on the table rows
      */
     function recalculateSummaryCards() {
       const rows = document.querySelectorAll('#inspectionTableBody tr');
@@ -429,9 +394,12 @@
 
       rows.forEach(row => {
         const statusText = row.cells[1].textContent.trim().toUpperCase();
-        if (statusText === 'UNREGISTERED' || statusText === 'OFFENDING') {
+        const fineText = row.cells[4].textContent.trim();
+        
+        if (statusText.includes('UNREGISTERED') || statusText.includes('OFFENDING')) {
           unregistered++;
-          fines += 30;
+          if (fineText.includes('30')) fines += 30;
+          else fines += 30; // default fine value
         } else {
           registered++;
         }
@@ -444,12 +412,9 @@
       document.getElementById('statWeeklyFines').textContent = `$${fines.toFixed(2)}`;
     }
 
-    /**
-     * Filter table rows based on Plate Number or Date inputs
-     */
     function filterTable() {
       const plateQuery = document.getElementById('plateSearchInput').value.toLowerCase().trim();
-      const dateQuery = document.getElementById('dateSearchInput').value; // Format: YYYY-MM-DD
+      const dateQuery = document.getElementById('dateSearchInput').value; 
       const rows = document.querySelectorAll('#inspectionTableBody tr');
 
       rows.forEach(row => {
@@ -475,13 +440,9 @@
       });
     }
 
-    /**
-     * Print currently filtered query results
-     */
     function printFilteredReport() {
       const plateQuery = document.getElementById('plateSearchInput').value.trim();
       const dateQuery = document.getElementById('dateSearchInput').value;
-      
       let metaInfo = `Report Generated: ${new Date().toLocaleString()}`;
       
       if (plateQuery || dateQuery) {
@@ -496,9 +457,6 @@
       window.print();
     }
 
-    /**
-     * Reset filters to display complete weekly log and initiate print action
-     */
     function printFullWeeklyLog() {
       document.getElementById('plateSearchInput').value = '';
       document.getElementById('dateSearchInput').value = '';
@@ -508,28 +466,18 @@
       window.print();
     }
 
-    /**
-     * Export currently visible/queried table rows to a CSV file for Excel
-     */
     function exportTableToCSV(filename) {
       const csv = [];
       const rows = document.querySelectorAll('#inspectionTable tr');
 
       rows.forEach(row => {
-        // Skip hidden filtered rows
-        if (row.style.display === 'none' && row.parentNode.tagName === 'TBODY') {
-          return;
-        }
-
+        if (row.style.display === 'none' && row.parentNode.tagName === 'TBODY') return;
         const cols = row.querySelectorAll('th, td');
         const rowData = [];
-
         cols.forEach(col => {
           let text = col.innerText.replace(/(\r\n|\n|\r)/gm, '').trim();
-          text = `"${text.replace(/"/g, '""')}"`;
-          rowData.push(text);
+          rowData.push(`"${text.replace(/"/g, '""')}"`);
         });
-
         csv.push(rowData.join(','));
       });
 
@@ -537,7 +485,6 @@
       const downloadLink = document.createElement('a');
       downloadLink.href = window.URL.createObjectURL(csvFile);
       downloadLink.download = filename;
-
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
