@@ -1,498 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Harare Transit Tracker - Reports & Inspection Logs</title>
-  <!-- Bootstrap 5 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-  
-  <style>
-    body {
-      background-color: #0b132b;
-      color: #ffffff;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harare Transit - Municipal Enforcement & Compliance Analytics</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0b1329; color: #f8fafc; padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #273e63; padding-bottom: 15px; }
+        h1 { font-size: 24px; color: #ffffff; }
+        .back-btn { background: #334155; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: bold; }
+        .back-btn:hover { background: #475569; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .card { background-color: #172a45; padding: 20px; border-radius: 10px; border: 1px solid #273e63; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .card h3 { font-size: 11px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card .value { font-size: 24px; font-weight: bold; color: #38bdf8; }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
 
-    .card-custom {
-      background-color: #1c2541;
-      border: 1px solid #2a3859;
-      border-radius: 8px;
-    }
+        .section-title { font-size: 18px; color: #ffffff; margin: 0; }
+        
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
 
-    .stat-card {
-      background-color: #1c2541;
-      border: 1px solid #2a3859;
-      border-radius: 8px;
-      padding: 1.25rem;
-    }
+        .filter-bar input {
+            padding: 9px 12px;
+            background-color: #172a45;
+            border: 1px solid #273e63;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            width: 200px;
+        }
 
-    .stat-title {
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      color: #8d99ae;
-    }
+        .filter-bar input:focus {
+            outline: none;
+            border-color: #0284c7;
+        }
 
-    .stat-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-top: 0.5rem;
-    }
+        .action-btn {
+            background-color: #0284c7;
+            color: white;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .action-btn:hover { background-color: #0369a1; }
 
-    .table-dark-custom {
-      background-color: #1c2541;
-      color: #ffffff;
-    }
+        table { width: 100%; border-collapse: collapse; background-color: #172a45; border-radius: 8px; overflow: hidden; border: 1px solid #273e63; margin-bottom: 30px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #273e63; font-size: 14px; }
+        th { background-color: #1e3a60; color: #38bdf8; font-weight: 600; }
+        tr:hover { background-color: #1e293b; }
 
-    .table-dark-custom th {
-      background-color: #0b132b;
-      color: #4cc9f0;
-      border-bottom: 2px solid #2a3859;
-    }
+        .badge-registered {
+            background-color: #065f4633;
+            color: #34d399;
+            border: 1px solid #10b981;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
 
-    .table-dark-custom td {
-      border-color: #2a3859;
-      vertical-align: middle;
-    }
+        .badge-unregistered {
+            background-color: #7f1d1d33;
+            color: #fca5a5;
+            border: 1px solid #ef4444;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
 
-    .badge-unregistered {
-      background-color: rgba(239, 68, 68, 0.2);
-      color: #ef4444;
-      border: 1px solid #ef4444;
-    }
-
-    .badge-registered {
-      background-color: rgba(16, 185, 129, 0.2);
-      color: #10b981;
-      border: 1px solid #10b981;
-    }
-
-    /* Print Header (hidden on web screen) */
-    .print-header {
-      display: none;
-    }
-
-    /* Print Optimization Styles */
-    @media print {
-      nav, .navbar, .sidebar, .btn, input, .search-box, header, footer, .no-print {
-        display: none !important;
-      }
-
-      body {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 15px;
-      }
-
-      .container, .container-fluid {
-        width: 100% !important;
-        max-width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-
-      .stat-card {
-        border: 1px solid #333 !important;
-        background-color: #f8f9fa !important;
-        color: #000000 !important;
-        box-shadow: none !important;
-      }
-
-      .stat-title {
-        color: #333333 !important;
-      }
-
-      .stat-value {
-        color: #000000 !important;
-      }
-
-      .print-header {
-        display: block !important;
-        text-align: center;
-        margin-bottom: 20px;
-        border-bottom: 2px solid #000;
-        padding-bottom: 10px;
-        color: #000000 !important;
-      }
-
-      .print-header h2 {
-        font-size: 18pt;
-        font-weight: bold;
-        margin: 0;
-      }
-
-      .table-dark-custom {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-      }
-
-      table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-      }
-
-      th, td {
-        border: 1px solid #000000 !important;
-        padding: 8px !important;
-        font-size: 10pt !important;
-        color: #000000 !important;
-      }
-
-      th {
-        background-color: #e9ecef !important;
-        color: #000000 !important;
-        font-weight: bold;
-      }
-
-      .text-danger, .text-success, .text-warning {
-        color: #000000 !important;
-      }
-
-      .badge {
-        border: 1px solid #000000 !important;
-        color: #000000 !important;
-        background: transparent !important;
-      }
-    }
-  </style>
+        @media print {
+            .back-btn, .filter-bar, .header h1 { display: none; }
+            body { background-color: #fff; color: #000; padding: 10px; }
+            .card { border: 1px solid #ccc; background-color: #fff; color: #000; }
+            table { border: 1px solid #ccc; background-color: #fff; color: #000; }
+            th { background-color: #f1f5f9; color: #000; }
+            td { color: #000 !important; }
+        }
+    </style>
 </head>
 <body>
 
-  <div class="container-fluid py-4 px-4">
-    
-    <!-- Print Report Header Template -->
-    <div id="printHeader" class="print-header">
-      <h2>CITY OF HARARE - MUNICIPAL TRANSIT INSPECTION REPORT</h2>
-      <p id="printReportMeta" style="margin: 5px 0 0 0; font-size: 0.9rem; color: #333;"></p>
+    <div class="header">
+        <h1>Municipal Enforcement & Compliance Analytics</h1>
+        <a href="/admin.html" class="back-btn">← Back to Admin Control</a>
     </div>
 
-    <!-- Summary Metrics Cards -->
-    <div class="row g-3 mb-4 no-print">
-      <div class="col">
-        <div class="stat-card">
-          <div class="stat-title">Total Inspections</div>
-          <div class="stat-value text-info" id="statTotalInspections">7</div>
+    <!-- Analytics Summary Cards -->
+    <div class="grid">
+        <div class="card">
+            <h3>Total Inspections</h3>
+            <div class="value" id="totalInspections">0</div>
         </div>
-      </div>
-      <div class="col">
-        <div class="stat-card">
-          <div class="stat-title">Registered Checked</div>
-          <div class="stat-value text-success" id="statRegisteredChecked">3</div>
+        <div class="card">
+            <h3>Registered Checked</h3>
+            <div class="value" id="registeredCount" style="color: #10b981;">0</div>
         </div>
-      </div>
-      <div class="col">
-        <div class="stat-card">
-          <div class="stat-title">Unregistered / Offending</div>
-          <div class="stat-value text-danger" id="statUnregisteredOffending">4</div>
+        <div class="card">
+            <h3>Unregistered / Offending</h3>
+            <div class="value" id="unregisteredCount" style="color: #ef4444;">0</div>
         </div>
-      </div>
-      <div class="col">
-        <div class="stat-card">
-          <div class="stat-title">Total Fines Issued</div>
-          <div class="stat-value text-info" id="statTotalFines">$120.00</div>
+        <div class="card">
+            <h3>Total Fines Issued</h3>
+            <div class="value" id="totalFines">$0.00</div>
         </div>
-      </div>
-      <div class="col">
-        <div class="stat-card">
-          <div class="stat-title">Weekly Unregistered Fines</div>
-          <div class="stat-value text-warning" id="statWeeklyFines">$120.00</div>
+        <div class="card" style="border-color: #38bdf8;">
+            <h3>Weekly Unregistered Fines</h3>
+            <div class="value" id="weeklyFines" style="color: #38bdf8;">$0.00</div>
         </div>
-      </div>
+        <div class="card" style="border-color: #f59e0b;">
+            <h3>Monthly Unregistered Fines</h3>
+            <div class="value" id="monthlyFines" style="color: #f59e0b;">$0.00</div>
+        </div>
     </div>
 
-    <!-- Section Header & Controls -->
-    <div class="card-custom p-3 mb-4">
-      <div class="row align-items-center g-3">
-        <div class="col-lg-4 col-md-12">
-          <h2 class="h5 mb-0 text-white fw-bold">Weekly Vehicle Inspection Log & Plate Analysis</h2>
+    <!-- Section Header with Search and Export controls -->
+    <div class="section-header">
+        <h2 class="section-title">Monthly Vehicle Inspection Log & Plate Analysis (30 Days)</h2>
+        <div class="filter-bar">
+            <input type="text" id="searchPlate" placeholder="Search Plate (e.g. ABC)" onkeyup="filterTable()">
+            <input type="date" id="searchDate" onchange="filterTable()">
+            <button class="action-btn" onclick="window.print()">🖨️ Print Log</button>
         </div>
-        
-        <div class="col-lg-8 col-md-12">
-          <div class="d-flex flex-wrap justify-content-end gap-2">
-            <!-- Filter Inputs -->
-            <input type="text" id="plateSearchInput" class="form-control form-control-sm bg-dark text-white border-secondary no-print" style="max-width: 180px;" placeholder="Search by Plate" onkeyup="filterTable()">
-            <input type="date" id="dateSearchInput" class="form-control form-control-sm bg-dark text-white border-secondary no-print" style="max-width: 150px;" onchange="filterTable()">
-            
-            <!-- Action Buttons -->
-            <button onclick="printFilteredReport()" class="btn btn-outline-info btn-sm no-print" title="Print currently filtered results">
-              <i class="bi bi-printer-fill me-1"></i> Print Queried
-            </button>
-            <button onclick="printFullWeeklyLog()" class="btn btn-primary btn-sm no-print" title="Print full weekly inspection logs">
-              <i class="bi bi-file-earmark-pdf-fill me-1"></i> Print Full Log
-            </button>
-            <button onclick="exportTableToCSV('harare_transit_inspection_report.csv')" class="btn btn-outline-success btn-sm no-print" title="Export queried results to Excel/CSV">
-              <i class="bi bi-file-earmark-spreadsheet-fill me-1"></i> Export CSV
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <!-- Main Data Table -->
-    <div class="card-custom p-3">
-      <div class="table-responsive">
-        <table class="table table-dark-custom table-hover align-middle mb-0" id="inspectionTable">
-          <thead>
+    <table>
+        <thead>
             <tr>
-              <th>Queried Vehicle Plate</th>
-              <th>Status</th>
-              <th>Checkpoint Location</th>
-              <th>Action Taken</th>
-              <th>Fine Charged ($)</th>
-              <th>Query Date & Time</th>
+                <th>Queried Vehicle Plate</th>
+                <th>Status</th>
+                <th>Checkpoint Location</th>
+                <th>Action Taken</th>
+                <th>Fine Charged ($)</th>
+                <th>Query Date & Time</th>
             </tr>
-          </thead>
-          <tbody id="inspectionTableBody">
-            <!-- Initial demo rows -->
-            <tr>
-              <td class="fw-bold">AHA-2678</td>
-              <td><span class="badge badge-unregistered rounded-pill px-3">UNREGISTERED</span></td>
-              <td>Rezende Street Rank</td>
-              <td>FINED</td>
-              <td class="text-danger fw-bold">$30.00</td>
-              <td>29/10/2026, 10:26:16</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">AGT-7683</td>
-              <td><span class="badge badge-registered rounded-pill px-3">REGISTERED</span></td>
-              <td>Rezende Street Rank</td>
-              <td>CLEARED</td>
-              <td class="text-success fw-bold">$0.00</td>
-              <td>29/10/2026, 10:25:23</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">AHG-9768</td>
-              <td><span class="badge badge-unregistered rounded-pill px-3">UNREGISTERED</span></td>
-              <td>Copacabana Bus Station</td>
-              <td>FINED</td>
-              <td class="text-danger fw-bold">$30.00</td>
-              <td>28/10/2026, 17:36:06</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">AHO-5449</td>
-              <td><span class="badge badge-registered rounded-pill px-3">REGISTERED</span></td>
-              <td>Fourth Street Rank</td>
-              <td>CLEARED</td>
-              <td class="text-success fw-bold">$0.00</td>
-              <td>24/10/2026, 23:04:52</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">ASD-3890</td>
-              <td><span class="badge badge-unregistered rounded-pill px-3">UNREGISTERED</span></td>
-              <td>Fourth Street Rank</td>
-              <td>FINED</td>
-              <td class="text-danger fw-bold">$30.00</td>
-              <td>24/10/2026, 23:04:13</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">AHO-5449</td>
-              <td><span class="badge badge-registered rounded-pill px-3">REGISTERED</span></td>
-              <td>Fourth Street Rank</td>
-              <td>CLEARED</td>
-              <td class="text-success fw-bold">$0.00</td>
-              <td>23/10/2026, 17:34:55</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">ABC-2009</td>
-              <td><span class="badge badge-unregistered rounded-pill px-3">UNREGISTERED</span></td>
-              <td>Fourth Street Rank</td>
-              <td>FINED</td>
-              <td class="text-danger fw-bold">$30.00</td>
-              <td>23/10/2026, 17:34:20</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+        </thead>
+        <tbody id="weeklyLogsTableBody">
+            <tr><td colspan="6" style="text-align: center; color: #94a3b8;">Loading inspection log records...</td></tr>
+        </tbody>
+    </table>
 
-  </div>
+    <script>
+        let allInspectionLogs = [];
 
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        async function fetchEnforcementReports() {
+            try {
+                const response = await fetch('/api/enforcement/reports/summary');
+                const data = await response.json();
 
-  <!-- Functionality Scripts -->
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      loadAndMergeLogs();
-    });
+                if (data && data.success) {
+                    const stats = data.summary || {};
+                    document.getElementById('totalInspections').textContent = stats.total_inspections || 0;
+                    document.getElementById('registeredCount').textContent = stats.registered_count || 0;
+                    document.getElementById('unregisteredCount').textContent = stats.unregistered_count || 0;
+                    document.getElementById('totalFines').textContent = `$${parseFloat(stats.total_fines_issued || 0).toFixed(2)}`;
+                    document.getElementById('weeklyFines').textContent = `$${parseFloat(stats.weekly_unregistered_fines || 0).toFixed(2)}`;
+                    document.getElementById('monthlyFines').textContent = `$${parseFloat(stats.monthly_unregistered_fines || 0).toFixed(2)}`;
 
-    // Listen for storage updates if opened across multiple tabs
-    window.addEventListener('storage', function(e) {
-      if (['inspection_logs', 'harare_transit_logs', 'inspections'].includes(e.key)) {
-        location.reload();
-      }
-    });
-
-    /**
-     * Pulls stored logs from localStorage and prepends them to the table
-     */
-    function loadAndMergeLogs() {
-      let savedLogs = [];
-      const possibleKeys = ['inspection_logs', 'harare_transit_logs', 'inspections', 'transit_queries', 'queried_vehicles'];
-      
-      for (let key of possibleKeys) {
-        try {
-          const data = localStorage.getItem(key);
-          if (data) {
-            const parsed = JSON.parse(data);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              savedLogs = parsed;
-              break;
+                    allInspectionLogs = data.weekly_logs || [];
+                    renderTable(allInspectionLogs);
+                } else {
+                    document.getElementById('weeklyLogsTableBody').innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Failed to load report data from server.</td></tr>`;
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                document.getElementById('weeklyLogsTableBody').innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444;">Error connecting to server API.</td></tr>`;
             }
-          }
-        } catch (e) {
-          console.error("Error reading storage key:", key, e);
-        }
-      }
-
-      if (savedLogs.length === 0) {
-        recalculateSummaryCards();
-        return;
-      }
-
-      const tbody = document.getElementById('inspectionTableBody');
-      
-      // Prepend newly verified vehicles so they appear at the top
-      savedLogs.reverse().forEach(log => {
-        const plate = log.plate || log.vehicle_plate || log.registration || 'UNKNOWN';
-        const rawStatus = (log.status || log.vehicle_status || 'UNREGISTERED').toUpperCase();
-        const isUnregistered = rawStatus.includes('UNREGISTERED') || rawStatus.includes('OFFENDING') || rawStatus.includes('FINED');
-        
-        const statusText = isUnregistered ? 'UNREGISTERED' : 'REGISTERED';
-        const badgeClass = isUnregistered ? 'badge-unregistered' : 'badge-registered';
-        const actionText = isUnregistered ? 'FINED' : 'CLEARED';
-        const fineText = isUnregistered ? (log.fine || '$30.00') : '$0.00';
-        const fineClass = isUnregistered ? 'text-danger' : 'text-success';
-        const location = log.location || log.checkpoint || log.checkpoint_location || 'Rezende Street Rank';
-        const timestamp = log.timestamp || log.date || log.created_at || new Date().toLocaleString();
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td class="fw-bold">${plate}</td>
-          <td><span class="badge ${badgeClass} rounded-pill px-3">${statusText}</span></td>
-          <td>${location}</td>
-          <td>${actionText}</td>
-          <td class="${fineClass} fw-bold">${fineText}</td>
-          <td>${timestamp}</td>
-        `;
-        tbody.insertBefore(row, tbody.firstChild);
-      });
-
-      recalculateSummaryCards();
-    }
-
-    /**
-     * Dynamically updates summary cards based on current table rows
-     */
-    function recalculateSummaryCards() {
-      const rows = document.querySelectorAll('#inspectionTableBody tr');
-      let total = rows.length;
-      let registered = 0;
-      let unregistered = 0;
-      let fines = 0;
-
-      rows.forEach(row => {
-        const statusText = row.cells[1].textContent.trim().toUpperCase();
-        const fineText = row.cells[4].textContent.trim();
-        
-        if (statusText.includes('UNREGISTERED') || statusText.includes('OFFENDING')) {
-          unregistered++;
-          fines += 30;
-        } else {
-          registered++;
-        }
-      });
-
-      document.getElementById('statTotalInspections').textContent = total;
-      document.getElementById('statRegisteredChecked').textContent = registered;
-      document.getElementById('statUnregisteredOffending').textContent = unregistered;
-      document.getElementById('statTotalFines').textContent = `$${fines.toFixed(2)}`;
-      document.getElementById('statWeeklyFines').textContent = `$${fines.toFixed(2)}`;
-    }
-
-    function filterTable() {
-      const plateQuery = document.getElementById('plateSearchInput').value.toLowerCase().trim();
-      const dateQuery = document.getElementById('dateSearchInput').value; 
-      const rows = document.querySelectorAll('#inspectionTableBody tr');
-
-      rows.forEach(row => {
-        const plateCell = row.cells[0].textContent.toLowerCase();
-        const dateCell = row.cells[5].textContent; 
-
-        let matchesPlate = true;
-        let matchesDate = true;
-
-        if (plateQuery) {
-          matchesPlate = plateCell.includes(plateQuery);
         }
 
-        if (dateQuery) {
-          const parts = dateQuery.split('-');
-          if (parts.length === 3) {
-            const formattedQueryDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
-            matchesDate = dateCell.includes(formattedQueryDate);
-          }
+        function renderTable(logs) {
+            const logsTbody = document.getElementById('weeklyLogsTableBody');
+            logsTbody.innerHTML = '';
+
+            if (!logs || logs.length === 0) {
+                logsTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8;">No matching inspection records found.</td></tr>`;
+                return;
+            }
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                const dateObj = log.created_at ? new Date(log.created_at) : null;
+                const dateStr = dateObj ? dateObj.toLocaleString() : 'N/A';
+                const statusBadge = log.is_registered 
+                    ? `<span class="badge-registered">REGISTERED</span>`
+                    : `<span class="badge-unregistered">UNREGISTERED</span>`;
+
+                tr.innerHTML = `
+                    <td style="font-weight: bold; color: #ffffff;">${log.vehicle_plate || 'N/A'}</td>
+                    <td>${statusBadge}</td>
+                    <td>${log.checkpoint_name || 'Harare Checkpoint'}</td>
+                    <td>${log.action_taken || 'N/A'}</td>
+                    <td style="color: ${Number(log.fine_amount) > 0 ? '#ef4444' : '#10b981'}; font-weight: bold;">
+                        $${parseFloat(log.fine_amount || 0).toFixed(2)}
+                    </td>
+                    <td style="color: #94a3b8; font-size: 13px;">${dateStr}</td>
+                `;
+                logsTbody.appendChild(tr);
+            });
         }
 
-        row.style.display = (matchesPlate && matchesDate) ? '' : 'none';
-      });
-    }
+        function filterTable() {
+            const plateQuery = document.getElementById('searchPlate').value.trim().toUpperCase();
+            const dateQuery = document.getElementById('searchDate').value;
 
-    function printFilteredReport() {
-      const plateQuery = document.getElementById('plateSearchInput').value.trim();
-      const dateQuery = document.getElementById('dateSearchInput').value;
-      let metaInfo = `Report Generated: ${new Date().toLocaleString()}`;
-      
-      if (plateQuery || dateQuery) {
-        metaInfo += ` | Active Query Filters: `;
-        if (plateQuery) metaInfo += `[Plate Search: "${plateQuery}"] `;
-        if (dateQuery) metaInfo += `[Date Selected: "${dateQuery}"]`;
-      } else {
-        metaInfo += ` | Query Filter: Showing All Records`;
-      }
+            const filtered = allInspectionLogs.filter(log => {
+                const matchesPlate = !plateQuery || (log.vehicle_plate && log.vehicle_plate.toUpperCase().includes(plateQuery));
+                
+                let matchesDate = true;
+                if (dateQuery && log.created_at) {
+                    const logDateOnly = log.created_at.split('T')[0];
+                    matchesDate = (logDateOnly === dateQuery);
+                }
 
-      document.getElementById('printReportMeta').innerText = metaInfo;
-      window.print();
-    }
+                return matchesPlate && matchesDate;
+            });
 
-    function printFullWeeklyLog() {
-      document.getElementById('plateSearchInput').value = '';
-      document.getElementById('dateSearchInput').value = '';
-      filterTable();
+            renderTable(filtered);
+        }
 
-      document.getElementById('printReportMeta').innerText = `Full Weekly Inspection Log Report | Generated: ${new Date().toLocaleString()}`;
-      window.print();
-    }
+        fetchEnforcementReports();
+    </script>
 
-    function exportTableToCSV(filename) {
-      const csv = [];
-      const rows = document.querySelectorAll('#inspectionTable tr');
-
-      rows.forEach(row => {
-        if (row.style.display === 'none' && row.parentNode.tagName === 'TBODY') return;
-        const cols = row.querySelectorAll('th, td');
-        const rowData = [];
-        cols.forEach(col => {
-          let text = col.innerText.replace(/(\r\n|\n|\r)/gm, '').trim();
-          rowData.push(`"${text.replace(/"/g, '""')}"`);
-        });
-        csv.push(rowData.join(','));
-      });
-
-      const csvFile = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
-      const downloadLink = document.createElement('a');
-      downloadLink.href = window.URL.createObjectURL(csvFile);
-      downloadLink.download = filename;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-    }
-  </script>
 </body>
 </html>
