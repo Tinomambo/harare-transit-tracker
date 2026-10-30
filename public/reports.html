@@ -322,13 +322,18 @@
       loadAndMergeLogs();
     });
 
+    // Listen for storage updates if opened across multiple tabs
+    window.addEventListener('storage', function(e) {
+      if (['inspection_logs', 'harare_transit_logs', 'inspections'].includes(e.key)) {
+        location.reload();
+      }
+    });
+
     /**
-     * Pulls stored logs from all possible local keys and prepends them to the table
+     * Pulls stored logs from localStorage and prepends them to the table
      */
     function loadAndMergeLogs() {
       let savedLogs = [];
-
-      // Check multiple common storage keys used across enforcement apps
       const possibleKeys = ['inspection_logs', 'harare_transit_logs', 'inspections', 'transit_queries', 'queried_vehicles'];
       
       for (let key of possibleKeys) {
@@ -342,7 +347,7 @@
             }
           }
         } catch (e) {
-          console.error("Error reading key:", key, e);
+          console.error("Error reading storage key:", key, e);
         }
       }
 
@@ -353,7 +358,7 @@
 
       const tbody = document.getElementById('inspectionTableBody');
       
-      // Prepend newly verified vehicles so they appear at the very top of the table
+      // Prepend newly verified vehicles so they appear at the top
       savedLogs.reverse().forEach(log => {
         const plate = log.plate || log.vehicle_plate || log.registration || 'UNKNOWN';
         const rawStatus = (log.status || log.vehicle_status || 'UNREGISTERED').toUpperCase();
@@ -383,7 +388,7 @@
     }
 
     /**
-     * Dynamically updates the top metric cards based on the table rows
+     * Dynamically updates summary cards based on current table rows
      */
     function recalculateSummaryCards() {
       const rows = document.querySelectorAll('#inspectionTableBody tr');
@@ -398,8 +403,7 @@
         
         if (statusText.includes('UNREGISTERED') || statusText.includes('OFFENDING')) {
           unregistered++;
-          if (fineText.includes('30')) fines += 30;
-          else fines += 30; // default fine value
+          fines += 30;
         } else {
           registered++;
         }
